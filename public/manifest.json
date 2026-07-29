@@ -1,0 +1,39 @@
+{
+  "short_name": "AutoTrack",
+  "name": "AutoTrack - Car Maintenance & Repair Log",
+  "description": "Progressive Web App for tracking vehicle service records, maintenance history, costs, and reminders.",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["utilities", "productivity", "automotive"],
+  "shortcuts": [
+    {
+      "name": "Add Service Log",
+      "short_name": "Log Service",
+      "description": "Quickly record a new maintenance or repair entry",
+      "url": "/?action=add-service"
+    },
+    {
+      "name": "Vehicle Garage",
+      "short_name": "Garage",
+      "description": "View and manage registered vehicle profiles",
+      "url": "/?action=garage"
+    }
+  ]
+}
