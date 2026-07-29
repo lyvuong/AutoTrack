@@ -1,1 +1,4 @@
-/*    /index.html   200
+# Exclude your index from looping on itself
+/index.html /index.html 200
+# Catch-all for everything else
+/* /index.html 200
