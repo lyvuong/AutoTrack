@@ -166,6 +166,18 @@ export const ReminderManager: React.FC<ReminderManagerProps> = ({
                     <p className="text-xs text-slate-400 italic">"{r.notes}"</p>
                   )}
 
+                  {/* Multi-User Audit Tracking Info */}
+                  {(r.createdBy || r.lastEditedBy) && (
+                    <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+                      {r.createdBy && (
+                        <span>👤 Created by <strong className="text-slate-200">{r.createdBy.displayName}</strong></span>
+                      )}
+                      {r.lastEditedBy && r.lastEditedBy.uid !== r.createdBy?.uid && (
+                        <span>✏️ Edited by <strong className="text-slate-300">{r.lastEditedBy.displayName}</strong></span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                     <button
