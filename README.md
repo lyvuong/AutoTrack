@@ -159,6 +159,56 @@ VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef...
 
 ---
 
+## ⚡ Deploying to Cloudflare Pages
+
+AutoTrack is optimized for free, high-performance hosting on **Cloudflare Pages** with automated global CDN deployment.
+
+### Method 1: Git Integration (Recommended for Continuous Deployment)
+1. Push your repository to **GitHub** or **GitLab**.
+2. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com/) and navigate to **Workers & Pages > Create > Pages > Connect to Git**.
+3. Select your `AutoTrack` repository and configure the build settings:
+   - **Framework preset**: `Vite` (or `None`)
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Node.js Version**: Set environment variable `NODE_VERSION=18` (or higher) under Environment variables.
+4. Add your Firebase environment variables under **Environment Variables (advanced)**:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+5. Click **Save and Deploy**. Cloudflare will build and publish your app globally on a `*.pages.dev` subdomain!
+
+---
+
+### Method 2: Command Line Deployment via Wrangler CLI
+You can also deploy directly from your local terminal using Cloudflare's **Wrangler CLI**:
+
+1. **Install Wrangler** (if not already installed):
+   ```bash
+   npm install -g wrangler
+   ```
+
+2. **Build the production bundle**:
+   ```bash
+   npm run build
+   ```
+
+3. **Deploy to Cloudflare Pages**:
+   ```bash
+   npx wrangler pages deploy dist --project-name=autotrack-app
+   ```
+
+---
+
+### 🌐 Important Cloudflare Configuration Notes
+
+- **Single-Page Application (SPA) Directives**: AutoTrack includes a `public/_redirects` file (`/* /index.html 200`) so client-side routing works cleanly without 404 errors when refreshing sub-pages.
+- **Firebase Authorized Domains**: After deploying, copy your live Cloudflare URL (e.g. `https://autotrack-app.pages.dev` or custom domain) and add it to **Firebase Console > Authentication > Settings > Authorized Domains** so Google Sign-In functions properly.
+
+---
+
 ## 👨‍👩‍👧‍👦 How Shared Household Garage Works
 
 1. **Host Setup**:
