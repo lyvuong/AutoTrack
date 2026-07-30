@@ -404,7 +404,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between bg-slate-900 p-3.5 rounded-xl border border-slate-800">
               <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
                 {isConfigUnlocked ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
-                {isConfigUnlocked ? 'Editing Unlocked' : 'Fields Locked for Safety'}
+                {isConfigUnlocked ? 'Editing Unlocked' : 'Configurations Hidden & Locked'}
               </span>
               <button
                 type="button"
@@ -416,68 +416,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }`}
               >
                 {isConfigUnlocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                {isConfigUnlocked ? 'Lock Settings' : 'Unlock to Edit'}
+                {isConfigUnlocked ? 'Lock & Hide Settings' : 'Unlock to View & Edit'}
               </button>
             </div>
 
-            <form onSubmit={handleSaveFirebaseConfig} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
-                  <input
-                    type="text"
-                    disabled={!isConfigUnlocked}
-                    placeholder="AIzaSy..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+            {isConfigUnlocked && (
+              <form onSubmit={handleSaveFirebaseConfig} className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
+                    <input
+                      type="text"
+                      placeholder="AIzaSy..."
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
+                    <input
+                      type="text"
+                      placeholder="my-autotrack-app"
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
-                  <input
-                    type="text"
-                    disabled={!isConfigUnlocked}
-                    placeholder="my-autotrack-app"
-                    value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
-                  <input
-                    type="text"
-                    disabled={!isConfigUnlocked}
-                    placeholder="my-autotrack-app.firebaseapp.com"
-                    value={authDomain}
-                    onChange={(e) => setAuthDomain(e.target.value)}
-                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
+                    <input
+                      type="text"
+                      placeholder="my-autotrack-app.firebaseapp.com"
+                      value={authDomain}
+                      onChange={(e) => setAuthDomain(e.target.value)}
+                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
+                    <input
+                      type="text"
+                      placeholder="1:123456789:web:abcdef..."
+                      value={appId}
+                      onChange={(e) => setAppId(e.target.value)}
+                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
-                  <input
-                    type="text"
-                    disabled={!isConfigUnlocked}
-                    placeholder="1:123456789:web:abcdef..."
-                    value={appId}
-                    onChange={(e) => setAppId(e.target.value)}
-                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
 
-              {configMessage && (
-                <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
-                  {configMessage}
-                </p>
-              )}
+                {configMessage && (
+                  <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
+                    {configMessage}
+                  </p>
+                )}
 
-              {isConfigUnlocked && (
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     type="submit"
@@ -495,8 +491,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </button>
                   )}
                 </div>
-              )}
-            </form>
+              </form>
+            )}
 
           </div>
         )}
