@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { Car, Plus, Edit2, Trash2, CheckCircle2, Gauge } from 'lucide-react';
+import { Car, Plus, Edit2, Trash2, CheckCircle2, Gauge, Users, Key } from 'lucide-react';
 import type { Vehicle } from '../../types';
 import { VehicleModal } from './VehicleModal';
 
 interface VehicleGarageProps {
   vehicles: Vehicle[];
   activeVehicleId: string;
+  familyCode?: string;
   onSelectVehicle: (id: string) => void;
   onSaveVehicle: (vehicle: Omit<Vehicle, 'createdAt' | 'updatedAt'>) => void;
   onDeleteVehicle: (id: string) => void;
+  onOpenSettings?: () => void;
 }
 
 export const VehicleGarage: React.FC<VehicleGarageProps> = ({
   vehicles,
   activeVehicleId,
+  familyCode,
   onSelectVehicle,
   onSaveVehicle,
-  onDeleteVehicle
+  onDeleteVehicle,
+  onOpenSettings
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -34,6 +38,46 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
   return (
     <div className="space-y-6">
       
+      {/* Shared Family Garage Status Banner */}
+      <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl flex-shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">
+                {familyCode ? 'Shared Household Garage' : 'Personal Garage Mode'}
+              </span>
+              {familyCode ? (
+                <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1">
+                  <Key className="w-3 h-3" /> {familyCode}
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                  Private
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {familyCode 
+                ? `Syncing vehicles & maintenance logs in real time across family members with code "${familyCode}".`
+                : 'Join or create a Household Code in Settings to share vehicles in real time with your spouse.'}
+            </p>
+          </div>
+        </div>
+
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="text-xs font-semibold text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 px-3.5 py-2 rounded-xl border border-indigo-800/80 transition-all self-end sm:self-auto flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Key className="w-3.5 h-3.5" />
+            {familyCode ? 'Manage Code' : 'Set Household Code'}
+          </button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-2xl">
         <div>
