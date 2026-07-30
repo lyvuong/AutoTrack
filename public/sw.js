@@ -1,11 +1,12 @@
-const CACHE_NAME = 'autotrack-v1';
+const CACHE_NAME = 'autotrack-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
-  '/src/main.tsx',
-  '/src/index.css'
+  '/favicon.svg',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {

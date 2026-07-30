@@ -36,12 +36,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRestoreSampleData
 }) => {
   const storedConfig = getStoredFirebaseConfig();
-  const [apiKey, setApiKey] = useState(storedConfig?.apiKey || '');
-  const [authDomain, setAuthDomain] = useState(storedConfig?.authDomain || '');
-  const [projectId, setProjectId] = useState(storedConfig?.projectId || '');
-  const [storageBucket, setStorageBucket] = useState(storedConfig?.storageBucket || '');
-  const [messagingSenderId, setMessagingSenderId] = useState(storedConfig?.messagingSenderId || '');
-  const [appId, setAppId] = useState(storedConfig?.appId || '');
+  const [apiKey, setApiKey] = useState(storedConfig?.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '');
+  const [authDomain, setAuthDomain] = useState(storedConfig?.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '');
+  const [projectId, setProjectId] = useState(storedConfig?.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || '');
+  const [storageBucket, setStorageBucket] = useState(storedConfig?.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '');
+  const [messagingSenderId, setMessagingSenderId] = useState(storedConfig?.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '');
+  const [appId, setAppId] = useState(storedConfig?.appId || import.meta.env.VITE_FIREBASE_APP_ID || '');
 
   const [configMessage, setConfigMessage] = useState('');
 
@@ -146,7 +146,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ? 'bg-cyan-950 text-cyan-300 border-cyan-800' 
               : 'bg-amber-950 text-amber-300 border-amber-800'
           }`}>
-            {isFirebaseActive ? 'Connected to Firebase' : 'Running in Local Demo Mode'}
+            {isFirebaseActive 
+              ? (storedConfig ? 'Connected (Browser Local Storage)' : 'Connected (.env Environment)') 
+              : 'Running in Local Demo Mode'}
           </span>
         </div>
 

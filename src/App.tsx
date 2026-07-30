@@ -28,6 +28,7 @@ import {
   initializeFirebaseService, 
   isFirebaseConfigured, 
   subscribeAuth, 
+  tryAutoSignInGoogle,
   subscribeFirestoreVehicles, 
   subscribeFirestoreRecords, 
   saveFirestoreVehicle, 
@@ -100,6 +101,9 @@ export const App: React.FC = () => {
             unSubVehicles();
             unSubRecords();
           };
+        } else {
+          // Attempt automatic Google sign-in if previous user session exists
+          tryAutoSignInGoogle().catch(() => {});
         }
       });
 

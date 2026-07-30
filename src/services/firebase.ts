@@ -90,12 +90,35 @@ export const loginWithGoogle = async (): Promise<UserProfile | null> => {
   if (!auth) throw new Error('Firebase Auth is not configured.');
   const provider = new GoogleAuthProvider();
   const res = await signInWithPopup(auth, provider);
+  localStorage.setItem('autotrack_auto_signin_google', 'true');
   return {
     uid: res.user.uid,
     email: res.user.email,
     displayName: res.user.displayName,
     photoURL: res.user.photoURL
   };
+};
+
+export const tryAutoSignInGoogle = async (): Promise<UserProfile | null> => {
+  if (!auth) return null;
+  if (auth.currentUser) {
+    return {
+      uid: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      displayName: auth.currentUser.displayName,
+      photoURL: auth.currentUser.photoURL
+    };
+  }
+  const shouldAutoSignIn = localStorage.getItem('autotrack_auto_signin_google') === 'true';
+  if (shouldAutoSignIn) {
+    try {
+      return await loginWithGoogle();
+    } catch (err) {
+      console.warn('[Firebase] Automatic Google sign-in deferred:', err);
+      return null;
+    }
+  }
+  return null;
 };
 
 export const loginWithEmail = async (email: string, pass: string): Promise<UserProfile | null> => {
@@ -121,6 +144,7 @@ export const registerWithEmail = async (email: string, pass: string): Promise<Us
 };
 
 export const logoutFirebase = async (): Promise<void> => {
+  localStorage.removeItem('autotrack_auto_signin_google');
   if (auth) {
     await firebaseSignOut(auth);
   }

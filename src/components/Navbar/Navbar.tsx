@@ -33,9 +33,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & App Name */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 ring-1 ring-white/20">
-              <Car className="w-6 h-6 text-white" />
-            </div>
+            <img 
+              src="/favicon.svg" 
+              alt="AutoTrack Icon" 
+              className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-white/20 object-cover" 
+            />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent font-display">
