@@ -1,0 +1,3 @@
+[assets]
+directory = "./dist"  # Change to "./public" or "./build" if your build folder is named differently
+not_found_handling = "single-page-application"
