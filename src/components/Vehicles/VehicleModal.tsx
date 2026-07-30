@@ -63,13 +63,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       make: make.trim(),
       model: model.trim(),
       year: Number(year),
-      vin: vin.trim() || undefined,
-      licensePlate: licensePlate.trim() || undefined,
+      vin: vin.trim(),
+      licensePlate: licensePlate.trim(),
       startingMileage: Number(startingMileage),
       currentMileage: Number(currentMileage),
       fuelType,
-      photoUrl: photoUrl.trim() || undefined,
-      notes: notes.trim() || undefined,
+      photoUrl: photoUrl.trim(),
+      notes: notes.trim(),
     });
     onClose();
   };
