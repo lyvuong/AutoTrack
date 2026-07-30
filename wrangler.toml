@@ -1,3 +1,4 @@
 [assets]
-directory = "./dist"  # Change to "./public" or "./build" if your build folder is named differently
+directory = "./dist"
 not_found_handling = "single-page-application"
+compatibility_date = "2026-07-30"
