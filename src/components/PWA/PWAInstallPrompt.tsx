@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 
 export const PWAInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -34,9 +34,11 @@ export const PWAInstallPrompt: React.FC = () => {
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-bounce-short">
       <div className="glass-panel p-4 rounded-2xl border border-cyan-500/50 shadow-2xl bg-slate-900/95 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow">
-            <Smartphone className="w-5 h-5" />
-          </div>
+          <img 
+            src="/favicon.svg" 
+            alt="AutoTrack App Icon" 
+            className="w-10 h-10 rounded-xl shadow-lg shadow-cyan-500/25 ring-1 ring-white/20 object-cover shrink-0" 
+          />
           <div>
             <h4 className="text-xs font-extrabold text-white">Install AutoTrack App</h4>
             <p className="text-[11px] text-slate-300">Add to home screen for offline maintenance logging.</p>

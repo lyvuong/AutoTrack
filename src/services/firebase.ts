@@ -1,13 +1,13 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import type { Vehicle, ServiceRecord, ServiceReminder, FirebaseConfig } from '../types';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged, 
-  type User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  signInWithCredential,
+  onAuthStateChanged,
+  signOut,
+  User
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -17,68 +17,60 @@ import {
   deleteDoc, 
   onSnapshot, 
   query, 
-  orderBy,
-  type Firestore
+  orderBy 
 } from 'firebase/firestore';
-import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile } from '../types';
-import { getStoredFirebaseConfig, setStoredFirebaseConfig } from './storage';
+import { getStoredFirebaseConfig } from './storage';
 
-let app: FirebaseApp | null = null;
-let db: Firestore | null = null;
+let db: ReturnType<typeof getFirestore> | null = null;
 let auth: ReturnType<typeof getAuth> | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
 
-const envConfig: FirebaseConfig | null = import.meta.env.VITE_FIREBASE_API_KEY ? {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-} : null;
-
-export const initializeFirebaseService = (customConfig?: FirebaseConfig): boolean => {
-  const config = customConfig || getStoredFirebaseConfig() || envConfig;
-  if (!config || !config.apiKey || !config.projectId) {
-    console.log('[Firebase] Running in Local Demo Mode');
-    return false;
-  }
-
-  try {
-    if (!getApps().length) {
-      app = initializeApp(config);
-    } else {
-      app = getApp();
-    }
-    db = getFirestore(app);
-    auth = getAuth(app);
-    if (customConfig) {
-      setStoredFirebaseConfig(customConfig);
-    }
-    console.log('[Firebase] Initialized for project:', config.projectId);
-    return true;
-  } catch (err) {
-    console.warn('[Firebase] Initialization failed:', err);
-    return false;
-  }
+export const DEFAULT_ENV_FIREBASE_CONFIG: FirebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
 };
 
 export const isFirebaseConfigured = (): boolean => {
-  return db !== null && auth !== null;
+  const stored = getStoredFirebaseConfig();
+  if (stored && stored.apiKey && stored.projectId) return true;
+  return Boolean(DEFAULT_ENV_FIREBASE_CONFIG.apiKey && DEFAULT_ENV_FIREBASE_CONFIG.projectId);
 };
 
-export const subscribeAuth = (callback: (user: UserProfile | null) => void) => {
-  if (!auth) {
-    callback(null);
-    return () => {};
+export const getActiveFirebaseConfig = (): FirebaseConfig => {
+  const stored = getStoredFirebaseConfig();
+  if (stored && stored.apiKey && stored.projectId) return stored;
+  return DEFAULT_ENV_FIREBASE_CONFIG;
+};
+
+export const initializeFirebaseService = (): boolean => {
+  if (!isFirebaseConfigured()) return false;
+
+  try {
+    const config = getActiveFirebaseConfig();
+    const app = getApps().length === 0 ? initializeApp(config) : getApp();
+    db = getFirestore(app);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    return true;
+  } catch (err) {
+    console.error('Failed to initialize Firebase service:', err);
+    return false;
   }
+};
+
+export const subscribeAuth = (callback: (user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null } | null) => void) => {
+  if (!auth) return () => {};
   return onAuthStateChanged(auth, (user: User | null) => {
     if (user) {
       callback({
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName || user.email?.split('@')[0] || 'Car Owner',
-        photoURL: user.photoURL,
-        isAnonymous: user.isAnonymous
+        displayName: user.displayName,
+        photoURL: user.photoURL
       });
     } else {
       callback(null);
@@ -86,68 +78,35 @@ export const subscribeAuth = (callback: (user: UserProfile | null) => void) => {
   });
 };
 
-export const loginWithGoogle = async (): Promise<UserProfile | null> => {
-  if (!auth) throw new Error('Firebase Auth is not configured.');
-  const provider = new GoogleAuthProvider();
-  const res = await signInWithPopup(auth, provider);
-  localStorage.setItem('autotrack_auto_signin_google', 'true');
-  return {
-    uid: res.user.uid,
-    email: res.user.email,
-    displayName: res.user.displayName,
-    photoURL: res.user.photoURL
-  };
+export const signInWithGoogle = async () => {
+  if (!auth || !googleProvider) {
+    throw new Error('Firebase Auth is not initialized. Configure Firebase settings first.');
+  }
+  const result = await signInWithPopup(auth, googleProvider);
+  if (result.user) {
+    localStorage.setItem('autotrack_has_google_session', 'true');
+  }
+  return result.user;
 };
 
-export const tryAutoSignInGoogle = async (): Promise<UserProfile | null> => {
-  if (!auth) return null;
-  if (auth.currentUser) {
-    return {
-      uid: auth.currentUser.uid,
-      email: auth.currentUser.email,
-      displayName: auth.currentUser.displayName,
-      photoURL: auth.currentUser.photoURL
-    };
-  }
-  const shouldAutoSignIn = localStorage.getItem('autotrack_auto_signin_google') === 'true';
-  if (shouldAutoSignIn) {
-    try {
-      return await loginWithGoogle();
-    } catch (err) {
-      console.warn('[Firebase] Automatic Google sign-in deferred:', err);
-      return null;
-    }
+export const tryAutoSignInGoogle = async () => {
+  if (!auth || !googleProvider) return null;
+  const hasSession = localStorage.getItem('autotrack_has_google_session');
+  if (!hasSession) return null;
+
+  try {
+    // Check if user is already signed in or session can be restored automatically
+    if (auth.currentUser) return auth.currentUser;
+  } catch (err) {
+    console.warn('[Firebase] Silent Google auto-signin skipped:', err);
   }
   return null;
 };
 
-export const loginWithEmail = async (email: string, pass: string): Promise<UserProfile | null> => {
-  if (!auth) throw new Error('Firebase Auth is not configured.');
-  const res = await signInWithEmailAndPassword(auth, email, pass);
-  return {
-    uid: res.user.uid,
-    email: res.user.email,
-    displayName: res.user.displayName || email.split('@')[0],
-    photoURL: res.user.photoURL
-  };
-};
-
-export const registerWithEmail = async (email: string, pass: string): Promise<UserProfile | null> => {
-  if (!auth) throw new Error('Firebase Auth is not configured.');
-  const res = await createUserWithEmailAndPassword(auth, email, pass);
-  return {
-    uid: res.user.uid,
-    email: res.user.email,
-    displayName: email.split('@')[0],
-    photoURL: res.user.photoURL
-  };
-};
-
-export const logoutFirebase = async (): Promise<void> => {
-  localStorage.removeItem('autotrack_auto_signin_google');
-  if (auth) {
-    await firebaseSignOut(auth);
-  }
+export const logoutFirebase = async () => {
+  if (!auth) return;
+  localStorage.removeItem('autotrack_has_google_session');
+  await signOut(auth);
 };
 
 export const subscribeFirestoreVehicles = (userId: string, callback: (vehicles: Vehicle[]) => void) => {
@@ -204,6 +163,20 @@ export const saveFirestoreReminder = async (userId: string, reminder: ServiceRem
   if (!db) return;
   const docRef = doc(db, 'users', userId, 'reminders', reminder.id);
   await setDoc(docRef, reminder, { merge: true });
+};
+
+export const subscribeFirestoreReminders = (userId: string, callback: (reminders: ServiceReminder[]) => void) => {
+  if (!db) return () => {};
+  const q = query(collection(db, 'users', userId, 'reminders'));
+  return onSnapshot(q, (snapshot) => {
+    const reminders: ServiceReminder[] = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    } as ServiceReminder));
+    callback(reminders);
+  }, (error) => {
+    console.error('[Firestore] Reminders sync error:', error);
+  });
 };
 
 export const deleteFirestoreReminder = async (userId: string, reminderId: string): Promise<void> => {

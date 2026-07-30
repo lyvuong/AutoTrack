@@ -81,17 +81,30 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
                   isActive ? 'ring-2 ring-cyan-500 border-cyan-500/60 shadow-xl shadow-cyan-500/10' : ''
                 }`}
               >
-                {/* Photo Header */}
-                <div className="relative h-44 bg-slate-900 overflow-hidden">
+                {/* Photo Header (Clickable to select active vehicle) */}
+                <div 
+                  onClick={() => onSelectVehicle(v.id)}
+                  className="relative h-44 bg-slate-900 overflow-hidden cursor-pointer group/photo"
+                  title={isActive ? 'Active Vehicle' : `Click to set ${v.year} ${v.make} ${v.model} as active vehicle`}
+                >
                   {v.photoUrl ? (
                     <img
                       src={v.photoUrl}
                       alt={`${v.make} ${v.model}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-500"
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-tr from-slate-900 via-slate-800 to-cyan-950 flex items-center justify-center">
-                      <Car className="w-16 h-16 text-slate-700" />
+                      <Car className="w-16 h-16 text-slate-700 group-hover/photo:scale-110 transition-transform" />
+                    </div>
+                  )}
+
+                  {/* Hover Overlay Prompt for Non-Active Vehicles */}
+                  {!isActive && (
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="bg-cyan-500 text-slate-950 text-xs font-extrabold px-3.5 py-1.5 rounded-full shadow-lg transform -translate-y-1 group-hover/photo:translate-y-0 transition-transform">
+                        Select Active
+                      </span>
                     </div>
                   )}
 
@@ -113,14 +126,18 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
 
                 {/* Body Content */}
                 <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
+                  <div 
+                    onClick={() => onSelectVehicle(v.id)}
+                    className="cursor-pointer group/title"
+                    title={isActive ? 'Active Vehicle' : `Click to set ${v.year} ${v.make} ${v.model} as active vehicle`}
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="bg-slate-800 text-slate-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">
                         {v.fuelType}
                       </span>
                       <span className="text-xs text-slate-400 font-semibold">{v.year}</span>
                     </div>
-                    <h3 className="text-xl font-extrabold text-white tracking-tight">
+                    <h3 className="text-xl font-extrabold text-white tracking-tight group-hover/title:text-cyan-400 transition-colors">
                       {v.make} {v.model}
                     </h3>
                     {v.vin && (
@@ -143,20 +160,13 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                    {!isActive && (
-                      <button
-                        onClick={() => onSelectVehicle(v.id)}
-                        className="flex-1 bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-slate-200 text-xs font-bold py-2 rounded-xl border border-slate-700 transition-all"
-                      >
-                        Select Active
-                      </button>
-                    )}
                     <button
                       onClick={() => handleOpenEdit(v)}
-                      className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-xl border border-slate-700 transition-all"
-                      title="Edit Profile"
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold py-2 rounded-xl border border-slate-700 transition-all"
+                      title="Edit Vehicle Details"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="w-3.5 h-3.5 text-cyan-400" />
+                      Edit Vehicle
                     </button>
                     <button
                       onClick={() => {

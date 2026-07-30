@@ -31,6 +31,7 @@ import {
   tryAutoSignInGoogle,
   subscribeFirestoreVehicles, 
   subscribeFirestoreRecords, 
+  subscribeFirestoreReminders,
   saveFirestoreVehicle, 
   deleteFirestoreVehicle, 
   saveFirestoreRecord, 
@@ -105,9 +106,21 @@ export const App: React.FC = () => {
             }
           });
 
+          const unSubReminders = subscribeFirestoreReminders(userProfile.uid, (cloudReminders) => {
+            if (cloudReminders.length > 0) {
+              setReminders(cloudReminders);
+              saveLocalReminders(cloudReminders);
+            } else {
+              // Seed existing local reminders to Firestore
+              const local = loadLocalReminders();
+              local.forEach(rem => saveFirestoreReminder(userProfile.uid, rem));
+            }
+          });
+
           return () => {
             unSubVehicles();
             unSubRecords();
+            unSubReminders();
           };
         } else {
           // Attempt automatic Google sign-in if previous user session exists
@@ -182,6 +195,8 @@ export const App: React.FC = () => {
 
   const handleDeleteVehicle = (id: string) => {
     setVehicles(prev => prev.filter(v => v.id !== id));
+    setRecords(prev => prev.filter(r => r.vehicleId !== id));
+    setReminders(prev => prev.filter(r => r.vehicleId !== id));
     if (activeVehicleId === id) {
       const remaining = vehicles.filter(v => v.id !== id);
       if (remaining.length > 0) handleSelectVehicle(remaining[0].id);
@@ -190,6 +205,12 @@ export const App: React.FC = () => {
       deleteFirestoreVehicle(user.uid, id);
     }
   };
+
+  const validVehicleIds = new Set(vehicles.map(v => v.id));
+  const activeVehicleReminders = reminders.filter(r => 
+    !r.isCompleted && validVehicleIds.has(r.vehicleId) && (activeVehicleId ? r.vehicleId === activeVehicleId : true)
+  );
+  const pendingRemindersCount = activeVehicleReminders.length;
 
   // Handlers for Service Records CRUD
   const handleSaveRecord = (
@@ -279,8 +300,6 @@ export const App: React.FC = () => {
     setEditingRecord(null);
     setIsServiceModalOpen(true);
   };
-
-  const pendingRemindersCount = reminders.filter(r => !r.isCompleted).length;
 
   const handleRefreshData = () => {
     setVehicles(loadLocalVehicles());

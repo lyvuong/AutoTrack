@@ -232,82 +232,160 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
           No service records found matching your filters.
         </div>
       ) : (
-        <div className="glass-panel rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900/90 text-slate-400 text-[11px] uppercase tracking-wider font-extrabold border-b border-slate-800">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Vehicle</th>
-                  <th className="py-3.5 px-4">Category & Type</th>
-                  <th className="py-3.5 px-4">Mileage</th>
-                  <th className="py-3.5 px-4">Provider / Shop</th>
-                  <th className="py-3.5 px-4 text-right">Cost ($)</th>
-                  <th className="py-3.5 px-4 text-center no-print">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
-                {filteredRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-300">
-                      {r.date}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-white whitespace-nowrap">
+        <>
+          {/* Mobile View: Compact, Touch-Friendly Cards (for small screens < 768px) */}
+          <div className="md:hidden space-y-3.5">
+            {filteredRecords.map((r) => (
+              <div key={r.id} className="glass-panel p-4.5 rounded-2xl space-y-3 border border-slate-800">
+                
+                {/* Header Row: Category, Type Tag & Cost */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-extrabold text-sm text-white block">{r.category}</span>
+                    <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
                       {vehicleMap.get(r.vehicleId) || 'Unknown'}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-100">{r.category}</span>
-                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                          r.type === 'Repair' ? 'bg-red-950 text-red-400 border border-red-800/60' :
-                          r.type === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60' :
-                          r.type === 'Upgrade' ? 'bg-purple-950 text-purple-400 border border-purple-800/60' :
-                          'bg-slate-800 text-slate-300'
-                        }`}>
-                          {r.type}
-                        </span>
-                      </div>
-                      {r.notes && (
-                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 italic max-w-xs">{r.notes}</p>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-300">
-                      {r.mileage.toLocaleString()} mi
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
-                      {r.provider || 'Self / DIY'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-sm text-white whitespace-nowrap">
-                      ${r.cost.toFixed(2)}
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap no-print">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => onEditRecord(r)}
-                          className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition-all"
-                          title="Edit Record"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Delete service record for ${r.category} on ${r.date}?`)) {
-                              onDeleteRecord(r.id);
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                  </div>
+                  <span className="font-mono font-extrabold text-base text-cyan-400 shrink-0">
+                    ${r.cost.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Meta Row: Date, Mileage, Type Tag */}
+                <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/80">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-slate-400">{r.date}</span>
+                    <span className="text-slate-600">•</span>
+                    <span className="font-mono font-bold text-slate-200">{r.mileage.toLocaleString()} mi</span>
+                  </div>
+                  <span className={`text-[10px] uppercase font-extrabold px-2 py-0.5 rounded ${
+                    r.type === 'Repair' ? 'bg-red-950 text-red-400 border border-red-800/60' :
+                    r.type === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60' :
+                    r.type === 'Upgrade' ? 'bg-purple-950 text-purple-400 border border-purple-800/60' :
+                    'bg-slate-800 text-slate-300'
+                  }`}>
+                    {r.type}
+                  </span>
+                </div>
+
+                {/* Provider & Notes */}
+                {(r.provider || r.notes) && (
+                  <div className="text-xs text-slate-400 space-y-1">
+                    {r.provider && (
+                      <p className="text-[11px] text-slate-300">
+                        <strong className="text-slate-400">Shop:</strong> {r.provider}
+                      </p>
+                    )}
+                    {r.notes && (
+                      <p className="text-[11px] text-slate-400 italic line-clamp-2">
+                        "{r.notes}"
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/60 no-print">
+                  <button
+                    onClick={() => onEditRecord(r)}
+                    className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-cyan-400 px-3 py-1.5 rounded-xl border border-slate-700 font-bold transition-all"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete service record for ${r.category} on ${r.date}?`)) {
+                        onDeleteRecord(r.id);
+                      }
+                    }}
+                    className="flex items-center gap-1 text-xs bg-slate-800 hover:bg-red-950/60 text-red-400 px-3 py-1.5 rounded-xl border border-slate-700 font-bold transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+
+              </div>
+            ))}
           </div>
-        </div>
+
+          {/* Desktop View: Full Detail Table (for screens >= 768px) */}
+          <div className="hidden md:block glass-panel rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900/90 text-slate-400 text-[11px] uppercase tracking-wider font-extrabold border-b border-slate-800">
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Vehicle</th>
+                    <th className="py-3.5 px-4">Category & Type</th>
+                    <th className="py-3.5 px-4">Mileage</th>
+                    <th className="py-3.5 px-4">Provider / Shop</th>
+                    <th className="py-3.5 px-4 text-right">Cost ($)</th>
+                    <th className="py-3.5 px-4 text-center no-print">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-xs text-slate-200">
+                  {filteredRecords.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-300">
+                        {r.date}
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-white whitespace-nowrap">
+                        {vehicleMap.get(r.vehicleId) || 'Unknown'}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-100">{r.category}</span>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                            r.type === 'Repair' ? 'bg-red-950 text-red-400 border border-red-800/60' :
+                            r.type === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60' :
+                            r.type === 'Upgrade' ? 'bg-purple-950 text-purple-400 border border-purple-800/60' :
+                            'bg-slate-800 text-slate-300'
+                          }`}>
+                            {r.type}
+                          </span>
+                        </div>
+                        {r.notes && (
+                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 italic max-w-xs">{r.notes}</p>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-300">
+                        {r.mileage.toLocaleString()} mi
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                        {r.provider || 'Self / DIY'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-sm text-white whitespace-nowrap">
+                        ${r.cost.toFixed(2)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap no-print">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => onEditRecord(r)}
+                            className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition-all"
+                            title="Edit Record"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete service record for ${r.category} on ${r.date}?`)) {
+                                onDeleteRecord(r.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-all"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
     </div>
