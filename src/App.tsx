@@ -121,13 +121,21 @@ export const App: React.FC = () => {
               hasSeededVehicles = true;
               setVehicles(cloudVehicles);
               saveLocalVehicles(cloudVehicles);
-            } else if (!hasSeededVehicles) {
+            } else if (hasSeededVehicles) {
+              setVehicles([]);
+              saveLocalVehicles([]);
+            } else {
+              hasSeededVehicles = true;
               const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
               if (local.length > 0) {
+                setVehicles(local);
                 local.forEach(v => {
                   saveFirestoreVehicle(userProfile.uid, v, familyCode);
                   saveRTDBVehicle(userProfile.uid, v, familyCode);
                 });
+              } else {
+                setVehicles([]);
+                saveLocalVehicles([]);
               }
             }
           });
@@ -137,6 +145,9 @@ export const App: React.FC = () => {
               hasSeededVehicles = true;
               setVehicles(rtdbVehicles);
               saveLocalVehicles(rtdbVehicles);
+            } else if (hasSeededVehicles) {
+              setVehicles([]);
+              saveLocalVehicles([]);
             }
           });
 
@@ -145,13 +156,21 @@ export const App: React.FC = () => {
               hasSeededRecords = true;
               setRecords(cloudRecords);
               saveLocalRecords(cloudRecords);
-            } else if (!hasSeededRecords) {
+            } else if (hasSeededRecords) {
+              setRecords([]);
+              saveLocalRecords([]);
+            } else {
+              hasSeededRecords = true;
               const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
+                setRecords(local);
                 local.forEach(r => {
                   saveFirestoreRecord(userProfile.uid, r, familyCode);
                   saveRTDBRecord(userProfile.uid, r, familyCode);
                 });
+              } else {
+                setRecords([]);
+                saveLocalRecords([]);
               }
             }
           });
@@ -161,6 +180,9 @@ export const App: React.FC = () => {
               hasSeededRecords = true;
               setRecords(rtdbRecords);
               saveLocalRecords(rtdbRecords);
+            } else if (hasSeededRecords) {
+              setRecords([]);
+              saveLocalRecords([]);
             }
           });
 
@@ -169,13 +191,21 @@ export const App: React.FC = () => {
               hasSeededReminders = true;
               setReminders(cloudReminders);
               saveLocalReminders(cloudReminders);
-            } else if (!hasSeededReminders) {
+            } else if (hasSeededReminders) {
+              setReminders([]);
+              saveLocalReminders([]);
+            } else {
+              hasSeededReminders = true;
               const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
+                setReminders(local);
                 local.forEach(rem => {
                   saveFirestoreReminder(userProfile.uid, rem, familyCode);
                   saveRTDBReminder(userProfile.uid, rem, familyCode);
                 });
+              } else {
+                setReminders([]);
+                saveLocalReminders([]);
               }
             }
           });
@@ -185,6 +215,9 @@ export const App: React.FC = () => {
               hasSeededReminders = true;
               setReminders(rtdbReminders);
               saveLocalReminders(rtdbReminders);
+            } else if (hasSeededReminders) {
+              setReminders([]);
+              saveLocalReminders([]);
             }
           });
 
@@ -228,11 +261,26 @@ export const App: React.FC = () => {
   // Ensure active vehicle fallback
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0] || null;
 
+  const getAuditInfo = () => {
+    if (!user) return undefined;
+    return {
+      uid: user.uid,
+      displayName: user.displayName || user.email?.split('@')[0] || 'Family Member',
+      email: user.email || undefined
+    };
+  };
+
   // Handler for updating current vehicle mileage directly
   const handleUpdateMileage = (vehicleId: string, newMileage: number) => {
+    const author = getAuditInfo();
     setVehicles(prev => prev.map(v => {
       if (v.id === vehicleId) {
-        const updated = { ...v, currentMileage: newMileage, updatedAt: new Date().toISOString() };
+        const updated: Vehicle = { 
+          ...v, 
+          currentMileage: newMileage, 
+          updatedAt: new Date().toISOString(),
+          lastEditedBy: author || v.lastEditedBy
+        };
         if (user) {
           saveFirestoreVehicle(user.uid, updated, familyCode);
           saveRTDBVehicle(user.uid, updated, familyCode);
@@ -247,10 +295,14 @@ export const App: React.FC = () => {
   const handleSaveVehicle = (vehicleData: Omit<Vehicle, 'createdAt' | 'updatedAt'>) => {
     const existing = vehicles.find(v => v.id === vehicleData.id);
     const now = new Date().toISOString();
+    const author = getAuditInfo();
+
     const fullVehicle: Vehicle = {
       ...vehicleData,
       createdAt: existing ? existing.createdAt : now,
-      updatedAt: now
+      updatedAt: now,
+      createdBy: existing?.createdBy || author,
+      lastEditedBy: author || existing?.lastEditedBy
     };
 
     setVehicles(prev => {
@@ -272,16 +324,41 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteVehicle = (id: string) => {
-    setVehicles(prev => prev.filter(v => v.id !== id));
-    setRecords(prev => prev.filter(r => r.vehicleId !== id));
-    setReminders(prev => prev.filter(r => r.vehicleId !== id));
+    const updatedVehicles = vehicles.filter(v => v.id !== id);
+    const updatedRecords = records.filter(r => r.vehicleId !== id);
+    const updatedReminders = reminders.filter(r => r.vehicleId !== id);
+
+    setVehicles(updatedVehicles);
+    saveLocalVehicles(updatedVehicles);
+
+    setRecords(updatedRecords);
+    saveLocalRecords(updatedRecords);
+
+    setReminders(updatedReminders);
+    saveLocalReminders(updatedReminders);
+
     if (activeVehicleId === id) {
-      const remaining = vehicles.filter(v => v.id !== id);
-      if (remaining.length > 0) handleSelectVehicle(remaining[0].id);
+      if (updatedVehicles.length > 0) {
+        handleSelectVehicle(updatedVehicles[0].id);
+      } else {
+        setActiveVehicleIdState('');
+        setActiveVehicleId('');
+      }
     }
+
     if (user) {
       deleteFirestoreVehicle(user.uid, id, familyCode);
       deleteRTDBVehicle(user.uid, id, familyCode);
+
+      // Clean up orphaned records and reminders for this vehicle in cloud
+      records.filter(r => r.vehicleId === id).forEach(r => {
+        deleteFirestoreRecord(user.uid, r.id, familyCode);
+        deleteRTDBRecord(user.uid, r.id, familyCode);
+      });
+      reminders.filter(r => r.vehicleId === id).forEach(r => {
+        deleteFirestoreReminder(user.uid, r.id, familyCode);
+        deleteRTDBReminder(user.uid, r.id, familyCode);
+      });
     }
   };
 
@@ -297,9 +374,13 @@ export const App: React.FC = () => {
     reminderTarget?: { nextMileage?: number; nextDate?: string }
   ) => {
     const existing = records.find(r => r.id === recordData.id);
+    const author = getAuditInfo();
+
     const fullRecord: ServiceRecord = {
       ...recordData,
-      createdAt: existing ? existing.createdAt : new Date().toISOString()
+      createdAt: existing ? existing.createdAt : new Date().toISOString(),
+      loggedBy: existing?.loggedBy || author,
+      lastEditedBy: author || existing?.lastEditedBy
     };
 
     setRecords(prev => {
@@ -333,7 +414,9 @@ export const App: React.FC = () => {
         dueMileage: reminderTarget.nextMileage,
         dueDate: reminderTarget.nextDate,
         isCompleted: false,
-        notes: `Auto-scheduled after ${fullRecord.category} on ${fullRecord.date}`
+        notes: `Auto-scheduled after ${fullRecord.category} on ${fullRecord.date}`,
+        createdBy: author,
+        lastEditedBy: author
       };
       handleSaveReminder(newReminder);
     }
@@ -349,19 +432,28 @@ export const App: React.FC = () => {
 
   // Handlers for Reminders CRUD
   const handleSaveReminder = (reminder: ServiceReminder) => {
+    const existing = reminders.find(r => r.id === reminder.id);
+    const author = getAuditInfo();
+
+    const fullReminder: ServiceReminder = {
+      ...reminder,
+      createdBy: existing?.createdBy || author,
+      lastEditedBy: author || existing?.lastEditedBy
+    };
+
     setReminders(prev => {
-      const index = prev.findIndex(r => r.id === reminder.id);
+      const index = prev.findIndex(r => r.id === fullReminder.id);
       if (index >= 0) {
         const updatedList = [...prev];
-        updatedList[index] = reminder;
+        updatedList[index] = fullReminder;
         return updatedList;
       }
-      return [reminder, ...prev];
+      return [fullReminder, ...prev];
     });
 
     if (user) {
-      saveFirestoreReminder(user.uid, reminder, familyCode);
-      saveRTDBReminder(user.uid, reminder, familyCode);
+      saveFirestoreReminder(user.uid, fullReminder, familyCode);
+      saveRTDBReminder(user.uid, fullReminder, familyCode);
     }
   };
 
