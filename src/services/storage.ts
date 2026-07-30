@@ -158,13 +158,12 @@ export const loadLocalVehicles = (): Vehicle[] => {
   try {
     const raw = localStorage.getItem(VEHICLES_KEY);
     if (raw === null) {
-      localStorage.setItem(VEHICLES_KEY, JSON.stringify(INITIAL_VEHICLES));
-      return INITIAL_VEHICLES;
+      return [];
     }
     return JSON.parse(raw);
   } catch (err) {
     console.error('Failed to load local vehicles:', err);
-    return INITIAL_VEHICLES;
+    return [];
   }
 };
 
@@ -180,13 +179,12 @@ export const loadLocalRecords = (): ServiceRecord[] => {
   try {
     const raw = localStorage.getItem(RECORDS_KEY);
     if (raw === null) {
-      localStorage.setItem(RECORDS_KEY, JSON.stringify(INITIAL_RECORDS));
-      return INITIAL_RECORDS;
+      return [];
     }
     return JSON.parse(raw);
   } catch (err) {
     console.error('Failed to load local records:', err);
-    return INITIAL_RECORDS;
+    return [];
   }
 };
 
@@ -202,13 +200,12 @@ export const loadLocalReminders = (): ServiceReminder[] => {
   try {
     const raw = localStorage.getItem(REMINDERS_KEY);
     if (raw === null) {
-      localStorage.setItem(REMINDERS_KEY, JSON.stringify(INITIAL_REMINDERS));
-      return INITIAL_REMINDERS;
+      return [];
     }
     return JSON.parse(raw);
   } catch (err) {
     console.error('Failed to load local reminders:', err);
-    return INITIAL_REMINDERS;
+    return [];
   }
 };
 
@@ -218,6 +215,25 @@ export const saveLocalReminders = (reminders: ServiceReminder[]): void => {
   } catch (err) {
     console.error('Failed to save local reminders:', err);
   }
+};
+
+export const clearDemoData = (): void => {
+  try {
+    const vehicles = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
+    const records = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
+    const reminders = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
+    saveLocalVehicles(vehicles);
+    saveLocalRecords(records);
+    saveLocalReminders(reminders);
+  } catch (err) {
+    console.error('Failed to clear demo data:', err);
+  }
+};
+
+export const restoreSampleData = (): void => {
+  saveLocalVehicles(INITIAL_VEHICLES);
+  saveLocalRecords(INITIAL_RECORDS);
+  saveLocalReminders(INITIAL_REMINDERS);
 };
 
 export const getStoredFirebaseConfig = (): FirebaseConfig | null => {

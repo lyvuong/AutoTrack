@@ -20,6 +20,8 @@ import {
   saveLocalRecords, 
   loadLocalReminders, 
   saveLocalReminders, 
+  clearDemoData,
+  restoreSampleData,
   getActiveVehicleId, 
   setActiveVehicleId 
 } from './services/storage';
@@ -89,8 +91,8 @@ export const App: React.FC = () => {
               setVehicles(cloudVehicles);
               saveLocalVehicles(cloudVehicles);
             } else {
-              // Seed existing local vehicles to Firestore if user's cloud database is empty
-              const local = loadLocalVehicles();
+              // Seed existing local non-demo vehicles to Firestore if user's cloud database is empty
+              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
               local.forEach(v => saveFirestoreVehicle(userProfile.uid, v));
             }
           });
@@ -100,8 +102,8 @@ export const App: React.FC = () => {
               setRecords(cloudRecords);
               saveLocalRecords(cloudRecords);
             } else {
-              // Seed existing local records to Firestore
-              const local = loadLocalRecords();
+              // Seed existing local non-demo records to Firestore
+              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
               local.forEach(r => saveFirestoreRecord(userProfile.uid, r));
             }
           });
@@ -111,8 +113,8 @@ export const App: React.FC = () => {
               setReminders(cloudReminders);
               saveLocalReminders(cloudReminders);
             } else {
-              // Seed existing local reminders to Firestore
-              const local = loadLocalReminders();
+              // Seed existing local non-demo reminders to Firestore
+              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
               local.forEach(rem => saveFirestoreReminder(userProfile.uid, rem));
             }
           });
@@ -301,6 +303,33 @@ export const App: React.FC = () => {
     setIsServiceModalOpen(true);
   };
 
+  const handleClearDemoData = () => {
+    if (user) {
+      deleteFirestoreVehicle(user.uid, 'demo-v1');
+      deleteFirestoreVehicle(user.uid, 'demo-v2');
+      deleteFirestoreRecord(user.uid, 'rec-1');
+      deleteFirestoreRecord(user.uid, 'rec-2');
+      deleteFirestoreRecord(user.uid, 'rec-3');
+      deleteFirestoreRecord(user.uid, 'rec-4');
+      deleteFirestoreRecord(user.uid, 'rec-5');
+      deleteFirestoreRecord(user.uid, 'rec-6');
+      deleteFirestoreReminder(user.uid, 'rem-1');
+      deleteFirestoreReminder(user.uid, 'rem-2');
+      deleteFirestoreReminder(user.uid, 'rem-3');
+    }
+    clearDemoData();
+    setVehicles(loadLocalVehicles());
+    setRecords(loadLocalRecords());
+    setReminders(loadLocalReminders());
+  };
+
+  const handleRestoreSampleData = () => {
+    restoreSampleData();
+    setVehicles(loadLocalVehicles());
+    setRecords(loadLocalRecords());
+    setReminders(loadLocalReminders());
+  };
+
   const handleRefreshData = () => {
     setVehicles(loadLocalVehicles());
     setRecords(loadLocalRecords());
@@ -407,7 +436,8 @@ export const App: React.FC = () => {
             user={user}
             isFirebaseActive={isFirebaseActive}
             onRefreshData={handleRefreshData}
-            onRestoreSampleData={handleRefreshData}
+            onClearDemoData={handleClearDemoData}
+            onRestoreSampleData={handleRestoreSampleData}
           />
         )}
 
