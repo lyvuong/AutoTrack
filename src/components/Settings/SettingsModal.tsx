@@ -11,7 +11,12 @@ import {
   Users,
   Share2,
   Check,
-  Key
+  Key,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Unlock,
+  ShieldAlert
 } from 'lucide-react';
 import type { FirebaseConfig, UserProfile } from '../../types';
 import { 
@@ -47,6 +52,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [inputFamilyCode, setInputFamilyCode] = useState(familyCode || '');
   const [copiedCode, setCopiedCode] = useState(false);
+  
+  // Advanced Firebase Config state
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+  const [isConfigUnlocked, setIsConfigUnlocked] = useState(false);
+
   const storedConfig = getStoredFirebaseConfig();
   const [apiKey, setApiKey] = useState(storedConfig?.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '');
   const [authDomain, setAuthDomain] = useState(storedConfig?.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '');
@@ -76,6 +86,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const success = initializeFirebaseService(config);
     if (success) {
       setConfigMessage('✅ Firebase connected successfully!');
+      setIsConfigUnlocked(false);
       onRefreshData();
     } else {
       setConfigMessage('❌ Connection failed. Please check credentials.');
@@ -83,6 +94,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleClearFirebaseConfig = () => {
+    if (!confirm('Reset Firebase configuration to default environment settings?')) return;
     setStoredFirebaseConfig(null);
     setApiKey('');
     setAuthDomain('');
@@ -138,154 +150,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
             <Settings className="w-6 h-6 text-cyan-400" />
-            App Settings & Cloud Firebase Config
+            App Settings & Account Profile
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Configure Firebase Auth/Firestore cloud sync, manage account, export & import data backups.
+            Manage your login session, household garage code, data backups, and custom cloud setup.
           </p>
         </div>
       </div>
 
-      {/* Cloud Firebase Setup Panel */}
+      {/* User Authentication Account Panel */}
       <div className="glass-panel p-6 rounded-2xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
-            <Cloud className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-base font-bold text-white">Firebase Project Configuration</h2>
+            <User className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-base font-bold text-white">Google User Account</h2>
           </div>
           <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-            isFirebaseActive 
-              ? 'bg-cyan-950 text-cyan-300 border-cyan-800' 
+            user 
+              ? 'bg-emerald-950 text-emerald-300 border-emerald-800' 
               : 'bg-amber-950 text-amber-300 border-amber-800'
           }`}>
-            {isFirebaseActive 
-              ? (storedConfig ? 'Connected (Browser Local Storage)' : 'Connected (.env Environment)') 
-              : 'Running in Local Demo Mode'}
+            {user ? 'Authenticated' : 'Signed Out'}
           </span>
         </div>
 
-        <form onSubmit={handleSaveFirebaseConfig} className="space-y-4">
-          <p className="text-xs text-slate-400">
-            Enter your Google Firebase Console project configuration keys below to enable Firestore Cloud sync across devices.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
-              <input
-                type="text"
-                placeholder="AIzaSy..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
-              <input
-                type="text"
-                placeholder="my-autotrack-app"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
-              <input
-                type="text"
-                placeholder="my-autotrack-app.firebaseapp.com"
-                value={authDomain}
-                onChange={(e) => setAuthDomain(e.target.value)}
-                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
-              <input
-                type="text"
-                placeholder="1:123456789:web:abcdef..."
-                value={appId}
-                onChange={(e) => setAppId(e.target.value)}
-                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-              />
-            </div>
-          </div>
-
-          {configMessage && (
-            <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
-              {configMessage}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20"
-            >
-              Save Firebase Keys
-            </button>
-            {storedConfig && (
-              <button
-                type="button"
-                onClick={handleClearFirebaseConfig}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700"
-              >
-                Reset to Demo Mode
-              </button>
-            )}
-          </div>
-        </form>
-
-        {/* User Authentication Sub-Section */}
-        {isFirebaseActive && (
-          <div className="pt-6 border-t border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <User className="w-4 h-4 text-cyan-400" />
-              Firebase Authentication
-            </h3>
-
-            {user ? (
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="Avatar" className="w-10 h-10 rounded-full border border-cyan-500" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-                      {user.displayName?.charAt(0) || 'U'}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-bold text-sm text-white block">{user.displayName}</span>
-                    <span className="text-xs text-slate-400">{user.email}</span>
-                  </div>
+        {user ? (
+          <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-cyan-500 shadow-md" />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-extrabold text-base border border-cyan-500">
+                  {user.displayName?.charAt(0) || 'U'}
                 </div>
-                <button
-                  onClick={() => logoutFirebase()}
-                  className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-red-950/60 text-red-400 px-3 py-1.5 rounded-xl border border-slate-700"
-                >
-                  <LogOut className="w-3.5 h-3.5" /> Sign Out
-                </button>
+              )}
+              <div>
+                <span className="font-bold text-sm text-white block">{user.displayName}</span>
+                <span className="text-xs text-slate-400 font-mono">{user.email}</span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  onClick={handleGoogleAuth}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-slate-700 transition-all"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  Sign in with Google
-                </button>
-              </div>
-            )}
+            </div>
+            <button
+              onClick={() => logoutFirebase()}
+              className="flex items-center gap-1.5 text-xs font-bold bg-slate-800 hover:bg-red-950/60 text-red-400 hover:text-red-300 px-3.5 py-2 rounded-xl border border-slate-700 hover:border-red-800 transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <button
+              onClick={handleGoogleAuth}
+              className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-3 px-4 rounded-xl border border-slate-700 transition-all"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              Sign in with Google
+            </button>
           </div>
         )}
       </div>
@@ -429,6 +353,153 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
 
         </div>
+      </div>
+
+      {/* Advanced Developer Settings (Collapsible & Protected) */}
+      <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
+        <button
+          type="button"
+          onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
+          className="w-full p-5 flex items-center justify-between bg-slate-900/60 hover:bg-slate-900 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-800 rounded-xl text-slate-400">
+              <Cloud className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-white">Advanced Firebase Setup</span>
+                <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded border ${
+                  isFirebaseActive ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}>
+                  {isFirebaseActive ? 'Cloud Active' : 'Developer Mode'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Custom Google Cloud API keys & Project ID override (Protected).
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-slate-400">
+            {showAdvancedConfig ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </button>
+
+        {showAdvancedConfig && (
+          <div className="p-6 border-t border-slate-800 space-y-5 bg-slate-950/40">
+            
+            {/* Protection Notice */}
+            <div className="bg-amber-950/30 border border-amber-800/60 p-4 rounded-xl flex items-start gap-3 text-xs text-amber-200">
+              <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold block">Protected System Settings</span>
+                <p className="text-amber-300/80">
+                  These API keys connect AutoTrack to your Google Cloud Firestore database. Changing these keys by accident will break cloud synchronization for your account.
+                </p>
+              </div>
+            </div>
+
+            {/* Lock / Unlock Toggle */}
+            <div className="flex items-center justify-between bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                {isConfigUnlocked ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
+                {isConfigUnlocked ? 'Editing Unlocked' : 'Fields Locked for Safety'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsConfigUnlocked(!isConfigUnlocked)}
+                className={`text-xs font-bold px-3.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                  isConfigUnlocked 
+                    ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' 
+                    : 'bg-amber-950 text-amber-300 border-amber-800 hover:bg-amber-900'
+                }`}
+              >
+                {isConfigUnlocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                {isConfigUnlocked ? 'Lock Settings' : 'Unlock to Edit'}
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveFirebaseConfig} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
+                  <input
+                    type="text"
+                    disabled={!isConfigUnlocked}
+                    placeholder="AIzaSy..."
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
+                  <input
+                    type="text"
+                    disabled={!isConfigUnlocked}
+                    placeholder="my-autotrack-app"
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
+                  <input
+                    type="text"
+                    disabled={!isConfigUnlocked}
+                    placeholder="my-autotrack-app.firebaseapp.com"
+                    value={authDomain}
+                    onChange={(e) => setAuthDomain(e.target.value)}
+                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
+                  <input
+                    type="text"
+                    disabled={!isConfigUnlocked}
+                    placeholder="1:123456789:web:abcdef..."
+                    value={appId}
+                    onChange={(e) => setAppId(e.target.value)}
+                    className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              {configMessage && (
+                <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
+                  {configMessage}
+                </p>
+              )}
+
+              {isConfigUnlocked && (
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20"
+                  >
+                    Save Custom Firebase Keys
+                  </button>
+                  {storedConfig && (
+                    <button
+                      type="button"
+                      onClick={handleClearFirebaseConfig}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700"
+                    >
+                      Reset to Default Env
+                    </button>
+                  )}
+                </div>
+              )}
+            </form>
+
+          </div>
+        )}
       </div>
 
     </div>
