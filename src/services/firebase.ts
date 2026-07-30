@@ -24,7 +24,7 @@ import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
 import type { Database } from 'firebase/database';
 import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile } from '../types';
-import { getStoredFirebaseConfig, setStoredFirebaseConfig } from './storage';
+import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode } from './storage';
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
@@ -99,6 +99,9 @@ export const subscribeAuth = (callback: (user: UserProfile | null) => void) => {
 export const loginWithGoogle = async (): Promise<UserProfile | null> => {
   if (!auth) throw new Error('Firebase Auth is not configured.');
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
   const res = await signInWithPopup(auth, provider);
   localStorage.setItem('autotrack_auto_signin_google', 'true');
   return {
@@ -153,9 +156,18 @@ export const logoutFirebase = async (): Promise<void> => {
   }
 };
 
-export const subscribeFirestoreVehicles = (userId: string, callback: (vehicles: Vehicle[]) => void) => {
+const getStorageTarget = (userId: string, familyCode?: string) => {
+  const code = (familyCode || getStoredFamilyCode() || '').trim().toUpperCase();
+  if (code) {
+    return { root: 'households', id: code };
+  }
+  return { root: 'users', id: userId };
+};
+
+export const subscribeFirestoreVehicles = (userId: string, familyCode: string | undefined, callback: (vehicles: Vehicle[]) => void) => {
   if (!db) return () => {};
-  const q = query(collection(db, 'users', userId, 'vehicles'), orderBy('createdAt', 'desc'));
+  const target = getStorageTarget(userId, familyCode);
+  const q = query(collection(db, target.root, target.id, 'vehicles'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const vehicles: Vehicle[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
@@ -167,31 +179,34 @@ export const subscribeFirestoreVehicles = (userId: string, callback: (vehicles: 
   });
 };
 
-export const saveFirestoreVehicle = async (userId: string, vehicle: Vehicle): Promise<void> => {
+export const saveFirestoreVehicle = async (userId: string, vehicle: Vehicle, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanVehicle = JSON.parse(JSON.stringify(vehicle));
-    const docRef = doc(db, 'users', userId, 'vehicles', vehicle.id);
+    const docRef = doc(db, target.root, target.id, 'vehicles', vehicle.id);
     await setDoc(docRef, cleanVehicle, { merge: true });
-    console.log('[Firestore] Vehicle saved successfully:', vehicle.id);
+    console.log(`[Firestore] Vehicle saved successfully to ${target.root}/${target.id}:`, vehicle.id);
   } catch (err) {
     console.error('[Firestore] Error saving vehicle:', err);
   }
 };
 
-export const deleteFirestoreVehicle = async (userId: string, vehicleId: string): Promise<void> => {
+export const deleteFirestoreVehicle = async (userId: string, vehicleId: string, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'vehicles', vehicleId));
-    console.log('[Firestore] Vehicle deleted successfully:', vehicleId);
+    const target = getStorageTarget(userId, familyCode);
+    await deleteDoc(doc(db, target.root, target.id, 'vehicles', vehicleId));
+    console.log(`[Firestore] Vehicle deleted successfully from ${target.root}/${target.id}:`, vehicleId);
   } catch (err) {
     console.error('[Firestore] Error deleting vehicle:', err);
   }
 };
 
-export const subscribeFirestoreRecords = (userId: string, callback: (records: ServiceRecord[]) => void) => {
+export const subscribeFirestoreRecords = (userId: string, familyCode: string | undefined, callback: (records: ServiceRecord[]) => void) => {
   if (!db) return () => {};
-  const q = query(collection(db, 'users', userId, 'records'), orderBy('date', 'desc'));
+  const target = getStorageTarget(userId, familyCode);
+  const q = query(collection(db, target.root, target.id, 'records'), orderBy('date', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const records: ServiceRecord[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
@@ -203,42 +218,46 @@ export const subscribeFirestoreRecords = (userId: string, callback: (records: Se
   });
 };
 
-export const saveFirestoreRecord = async (userId: string, record: ServiceRecord): Promise<void> => {
+export const saveFirestoreRecord = async (userId: string, record: ServiceRecord, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanRecord = JSON.parse(JSON.stringify(record));
-    const docRef = doc(db, 'users', userId, 'records', record.id);
+    const docRef = doc(db, target.root, target.id, 'records', record.id);
     await setDoc(docRef, cleanRecord, { merge: true });
-    console.log('[Firestore] Record saved successfully:', record.id);
+    console.log(`[Firestore] Record saved successfully to ${target.root}/${target.id}:`, record.id);
   } catch (err) {
     console.error('[Firestore] Error saving record:', err);
   }
 };
 
-export const deleteFirestoreRecord = async (userId: string, recordId: string): Promise<void> => {
+export const deleteFirestoreRecord = async (userId: string, recordId: string, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'records', recordId));
+    const target = getStorageTarget(userId, familyCode);
+    await deleteDoc(doc(db, target.root, target.id, 'records', recordId));
   } catch (err) {
     console.error('[Firestore] Error deleting record:', err);
   }
 };
 
-export const saveFirestoreReminder = async (userId: string, reminder: ServiceReminder): Promise<void> => {
+export const saveFirestoreReminder = async (userId: string, reminder: ServiceReminder, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanReminder = JSON.parse(JSON.stringify(reminder));
-    const docRef = doc(db, 'users', userId, 'reminders', reminder.id);
+    const docRef = doc(db, target.root, target.id, 'reminders', reminder.id);
     await setDoc(docRef, cleanReminder, { merge: true });
-    console.log('[Firestore] Reminder saved successfully:', reminder.id);
+    console.log(`[Firestore] Reminder saved successfully to ${target.root}/${target.id}:`, reminder.id);
   } catch (err) {
     console.error('[Firestore] Error saving reminder:', err);
   }
 };
 
-export const subscribeFirestoreReminders = (userId: string, callback: (reminders: ServiceReminder[]) => void) => {
+export const subscribeFirestoreReminders = (userId: string, familyCode: string | undefined, callback: (reminders: ServiceReminder[]) => void) => {
   if (!db) return () => {};
-  const q = query(collection(db, 'users', userId, 'reminders'));
+  const target = getStorageTarget(userId, familyCode);
+  const q = query(collection(db, target.root, target.id, 'reminders'));
   return onSnapshot(q, (snapshot) => {
     const reminders: ServiceReminder[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
@@ -250,18 +269,20 @@ export const subscribeFirestoreReminders = (userId: string, callback: (reminders
   });
 };
 
-export const deleteFirestoreReminder = async (userId: string, reminderId: string): Promise<void> => {
+export const deleteFirestoreReminder = async (userId: string, reminderId: string, familyCode?: string): Promise<void> => {
   if (!db) return;
-  await deleteDoc(doc(db, 'users', userId, 'reminders', reminderId));
+  const target = getStorageTarget(userId, familyCode);
+  await deleteDoc(doc(db, target.root, target.id, 'reminders', reminderId));
 };
 
 // ==========================================
 // Firebase Realtime Database (RTDB) Handlers
 // ==========================================
 
-export const subscribeRTDBVehicles = (userId: string, callback: (vehicles: Vehicle[]) => void) => {
+export const subscribeRTDBVehicles = (userId: string, familyCode: string | undefined, callback: (vehicles: Vehicle[]) => void) => {
   if (!rtdb) return () => {};
-  const vRef = ref(rtdb, `users/${userId}/vehicles`);
+  const target = getStorageTarget(userId, familyCode);
+  const vRef = ref(rtdb, `${target.root}/${target.id}/vehicles`);
   return onValue(vRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
@@ -275,30 +296,33 @@ export const subscribeRTDBVehicles = (userId: string, callback: (vehicles: Vehic
   });
 };
 
-export const saveRTDBVehicle = async (userId: string, vehicle: Vehicle): Promise<void> => {
+export const saveRTDBVehicle = async (userId: string, vehicle: Vehicle, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanVehicle = JSON.parse(JSON.stringify(vehicle));
-    await set(ref(rtdb, `users/${userId}/vehicles/${vehicle.id}`), cleanVehicle);
-    console.log('[RTDB] Vehicle saved successfully:', vehicle.id);
+    await set(ref(rtdb, `${target.root}/${target.id}/vehicles/${vehicle.id}`), cleanVehicle);
+    console.log(`[RTDB] Vehicle saved successfully to ${target.root}/${target.id}:`, vehicle.id);
   } catch (err) {
     console.error('[RTDB] Error saving vehicle:', err);
   }
 };
 
-export const deleteRTDBVehicle = async (userId: string, vehicleId: string): Promise<void> => {
+export const deleteRTDBVehicle = async (userId: string, vehicleId: string, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
-    await remove(ref(rtdb, `users/${userId}/vehicles/${vehicleId}`));
-    console.log('[RTDB] Vehicle deleted successfully:', vehicleId);
+    const target = getStorageTarget(userId, familyCode);
+    await remove(ref(rtdb, `${target.root}/${target.id}/vehicles/${vehicleId}`));
+    console.log(`[RTDB] Vehicle deleted successfully from ${target.root}/${target.id}:`, vehicleId);
   } catch (err) {
     console.error('[RTDB] Error deleting vehicle:', err);
   }
 };
 
-export const subscribeRTDBRecords = (userId: string, callback: (records: ServiceRecord[]) => void) => {
+export const subscribeRTDBRecords = (userId: string, familyCode: string | undefined, callback: (records: ServiceRecord[]) => void) => {
   if (!rtdb) return () => {};
-  const rRef = ref(rtdb, `users/${userId}/records`);
+  const target = getStorageTarget(userId, familyCode);
+  const rRef = ref(rtdb, `${target.root}/${target.id}/records`);
   return onValue(rRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
@@ -313,29 +337,32 @@ export const subscribeRTDBRecords = (userId: string, callback: (records: Service
   });
 };
 
-export const saveRTDBRecord = async (userId: string, record: ServiceRecord): Promise<void> => {
+export const saveRTDBRecord = async (userId: string, record: ServiceRecord, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanRecord = JSON.parse(JSON.stringify(record));
-    await set(ref(rtdb, `users/${userId}/records/${record.id}`), cleanRecord);
-    console.log('[RTDB] Record saved successfully:', record.id);
+    await set(ref(rtdb, `${target.root}/${target.id}/records/${record.id}`), cleanRecord);
+    console.log(`[RTDB] Record saved successfully to ${target.root}/${target.id}:`, record.id);
   } catch (err) {
     console.error('[RTDB] Error saving record:', err);
   }
 };
 
-export const deleteRTDBRecord = async (userId: string, recordId: string): Promise<void> => {
+export const deleteRTDBRecord = async (userId: string, recordId: string, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
-    await remove(ref(rtdb, `users/${userId}/records/${recordId}`));
+    const target = getStorageTarget(userId, familyCode);
+    await remove(ref(rtdb, `${target.root}/${target.id}/records/${recordId}`));
   } catch (err) {
     console.error('[RTDB] Error deleting record:', err);
   }
 };
 
-export const subscribeRTDBReminders = (userId: string, callback: (reminders: ServiceReminder[]) => void) => {
+export const subscribeRTDBReminders = (userId: string, familyCode: string | undefined, callback: (reminders: ServiceReminder[]) => void) => {
   if (!rtdb) return () => {};
-  const remRef = ref(rtdb, `users/${userId}/reminders`);
+  const target = getStorageTarget(userId, familyCode);
+  const remRef = ref(rtdb, `${target.root}/${target.id}/reminders`);
   return onValue(remRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
@@ -349,21 +376,23 @@ export const subscribeRTDBReminders = (userId: string, callback: (reminders: Ser
   });
 };
 
-export const saveRTDBReminder = async (userId: string, reminder: ServiceReminder): Promise<void> => {
+export const saveRTDBReminder = async (userId: string, reminder: ServiceReminder, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
+    const target = getStorageTarget(userId, familyCode);
     const cleanReminder = JSON.parse(JSON.stringify(reminder));
-    await set(ref(rtdb, `users/${userId}/reminders/${reminder.id}`), cleanReminder);
-    console.log('[RTDB] Reminder saved successfully:', reminder.id);
+    await set(ref(rtdb, `${target.root}/${target.id}/reminders/${reminder.id}`), cleanReminder);
+    console.log(`[RTDB] Reminder saved successfully to ${target.root}/${target.id}:`, reminder.id);
   } catch (err) {
     console.error('[RTDB] Error saving reminder:', err);
   }
 };
 
-export const deleteRTDBReminder = async (userId: string, reminderId: string): Promise<void> => {
+export const deleteRTDBReminder = async (userId: string, reminderId: string, familyCode?: string): Promise<void> => {
   if (!rtdb) return;
   try {
-    await remove(ref(rtdb, `users/${userId}/reminders/${reminderId}`));
+    const target = getStorageTarget(userId, familyCode);
+    await remove(ref(rtdb, `${target.root}/${target.id}/reminders/${reminderId}`));
   } catch (err) {
     console.error('[RTDB] Error deleting reminder:', err);
   }
