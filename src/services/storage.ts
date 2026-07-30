@@ -157,7 +157,7 @@ const INITIAL_REMINDERS: ServiceReminder[] = [
 export const loadLocalVehicles = (): Vehicle[] => {
   try {
     const raw = localStorage.getItem(VEHICLES_KEY);
-    if (!raw) {
+    if (raw === null) {
       localStorage.setItem(VEHICLES_KEY, JSON.stringify(INITIAL_VEHICLES));
       return INITIAL_VEHICLES;
     }
@@ -179,7 +179,7 @@ export const saveLocalVehicles = (vehicles: Vehicle[]): void => {
 export const loadLocalRecords = (): ServiceRecord[] => {
   try {
     const raw = localStorage.getItem(RECORDS_KEY);
-    if (!raw) {
+    if (raw === null) {
       localStorage.setItem(RECORDS_KEY, JSON.stringify(INITIAL_RECORDS));
       return INITIAL_RECORDS;
     }
@@ -201,7 +201,7 @@ export const saveLocalRecords = (records: ServiceRecord[]): void => {
 export const loadLocalReminders = (): ServiceReminder[] => {
   try {
     const raw = localStorage.getItem(REMINDERS_KEY);
-    if (!raw) {
+    if (raw === null) {
       localStorage.setItem(REMINDERS_KEY, JSON.stringify(INITIAL_REMINDERS));
       return INITIAL_REMINDERS;
     }

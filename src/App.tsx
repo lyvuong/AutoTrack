@@ -87,6 +87,10 @@ export const App: React.FC = () => {
             if (cloudVehicles.length > 0) {
               setVehicles(cloudVehicles);
               saveLocalVehicles(cloudVehicles);
+            } else {
+              // Seed existing local vehicles to Firestore if user's cloud database is empty
+              const local = loadLocalVehicles();
+              local.forEach(v => saveFirestoreVehicle(userProfile.uid, v));
             }
           });
 
@@ -94,6 +98,10 @@ export const App: React.FC = () => {
             if (cloudRecords.length > 0) {
               setRecords(cloudRecords);
               saveLocalRecords(cloudRecords);
+            } else {
+              // Seed existing local records to Firestore
+              const local = loadLocalRecords();
+              local.forEach(r => saveFirestoreRecord(userProfile.uid, r));
             }
           });
 
@@ -111,24 +119,18 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Persist Local Storage changes in demo mode
+  // Always persist Local Storage changes for instant offline availability & fallback
   useEffect(() => {
-    if (!user) {
-      saveLocalVehicles(vehicles);
-    }
-  }, [vehicles, user]);
+    saveLocalVehicles(vehicles);
+  }, [vehicles]);
 
   useEffect(() => {
-    if (!user) {
-      saveLocalRecords(records);
-    }
-  }, [records, user]);
+    saveLocalRecords(records);
+  }, [records]);
 
   useEffect(() => {
-    if (!user) {
-      saveLocalReminders(reminders);
-    }
-  }, [reminders, user]);
+    saveLocalReminders(reminders);
+  }, [reminders]);
 
   // Set Active Vehicle
   const handleSelectVehicle = (id: string) => {
