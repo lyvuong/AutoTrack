@@ -39,7 +39,16 @@ import {
   saveFirestoreRecord, 
   deleteFirestoreRecord,
   saveFirestoreReminder,
-  deleteFirestoreReminder
+  deleteFirestoreReminder,
+  subscribeRTDBVehicles,
+  subscribeRTDBRecords,
+  subscribeRTDBReminders,
+  saveRTDBVehicle,
+  deleteRTDBVehicle,
+  saveRTDBRecord,
+  deleteRTDBRecord,
+  saveRTDBReminder,
+  deleteRTDBReminder
 } from './services/firebase';
 
 export const App: React.FC = () => {
@@ -65,7 +74,7 @@ export const App: React.FC = () => {
   // Listen to network status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => setIsOffline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -89,53 +98,86 @@ export const App: React.FC = () => {
           let hasSeededRecords = false;
           let hasSeededReminders = false;
 
-          // Subscribe to cloud Firestore changes
-          const unSubVehicles = subscribeFirestoreVehicles(userProfile.uid, (cloudVehicles) => {
-            if (!hasSeededVehicles && cloudVehicles.length === 0) {
-              hasSeededVehicles = true;
-              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
-              if (local.length > 0) {
-                local.forEach(v => saveFirestoreVehicle(userProfile.uid, v));
-              }
-            } else {
+          // Subscribe to cloud Firestore & Realtime Database changes
+          const unSubVehiclesFS = subscribeFirestoreVehicles(userProfile.uid, (cloudVehicles) => {
+            if (cloudVehicles.length > 0) {
               hasSeededVehicles = true;
               setVehicles(cloudVehicles);
               saveLocalVehicles(cloudVehicles);
+            } else if (!hasSeededVehicles) {
+              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(v => {
+                  saveFirestoreVehicle(userProfile.uid, v);
+                  saveRTDBVehicle(userProfile.uid, v);
+                });
+              }
             }
           });
 
-          const unSubRecords = subscribeFirestoreRecords(userProfile.uid, (cloudRecords) => {
-            if (!hasSeededRecords && cloudRecords.length === 0) {
-              hasSeededRecords = true;
-              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
-              if (local.length > 0) {
-                local.forEach(r => saveFirestoreRecord(userProfile.uid, r));
-              }
-            } else {
+          const unSubVehiclesRTDB = subscribeRTDBVehicles(userProfile.uid, (rtdbVehicles) => {
+            if (rtdbVehicles.length > 0) {
+              hasSeededVehicles = true;
+              setVehicles(rtdbVehicles);
+              saveLocalVehicles(rtdbVehicles);
+            }
+          });
+
+          const unSubRecordsFS = subscribeFirestoreRecords(userProfile.uid, (cloudRecords) => {
+            if (cloudRecords.length > 0) {
               hasSeededRecords = true;
               setRecords(cloudRecords);
               saveLocalRecords(cloudRecords);
+            } else if (!hasSeededRecords) {
+              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(r => {
+                  saveFirestoreRecord(userProfile.uid, r);
+                  saveRTDBRecord(userProfile.uid, r);
+                });
+              }
             }
           });
 
-          const unSubReminders = subscribeFirestoreReminders(userProfile.uid, (cloudReminders) => {
-            if (!hasSeededReminders && cloudReminders.length === 0) {
-              hasSeededReminders = true;
-              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
-              if (local.length > 0) {
-                local.forEach(rem => saveFirestoreReminder(userProfile.uid, rem));
-              }
-            } else {
+          const unSubRecordsRTDB = subscribeRTDBRecords(userProfile.uid, (rtdbRecords) => {
+            if (rtdbRecords.length > 0) {
+              hasSeededRecords = true;
+              setRecords(rtdbRecords);
+              saveLocalRecords(rtdbRecords);
+            }
+          });
+
+          const unSubRemindersFS = subscribeFirestoreReminders(userProfile.uid, (cloudReminders) => {
+            if (cloudReminders.length > 0) {
               hasSeededReminders = true;
               setReminders(cloudReminders);
               saveLocalReminders(cloudReminders);
+            } else if (!hasSeededReminders) {
+              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(rem => {
+                  saveFirestoreReminder(userProfile.uid, rem);
+                  saveRTDBReminder(userProfile.uid, rem);
+                });
+              }
+            }
+          });
+
+          const unSubRemindersRTDB = subscribeRTDBReminders(userProfile.uid, (rtdbReminders) => {
+            if (rtdbReminders.length > 0) {
+              hasSeededReminders = true;
+              setReminders(rtdbReminders);
+              saveLocalReminders(rtdbReminders);
             }
           });
 
           return () => {
-            unSubVehicles();
-            unSubRecords();
-            unSubReminders();
+            unSubVehiclesFS();
+            unSubVehiclesRTDB();
+            unSubRecordsFS();
+            unSubRecordsRTDB();
+            unSubRemindersFS();
+            unSubRemindersRTDB();
           };
         } else {
           // Attempt automatic Google sign-in if previous user session exists
@@ -174,7 +216,10 @@ export const App: React.FC = () => {
     setVehicles(prev => prev.map(v => {
       if (v.id === vehicleId) {
         const updated = { ...v, currentMileage: newMileage, updatedAt: new Date().toISOString() };
-        if (user) saveFirestoreVehicle(user.uid, updated);
+        if (user) {
+          saveFirestoreVehicle(user.uid, updated);
+          saveRTDBVehicle(user.uid, updated);
+        }
         return updated;
       }
       return v;
@@ -205,6 +250,7 @@ export const App: React.FC = () => {
 
     if (user) {
       saveFirestoreVehicle(user.uid, fullVehicle);
+      saveRTDBVehicle(user.uid, fullVehicle);
     }
   };
 
@@ -218,6 +264,7 @@ export const App: React.FC = () => {
     }
     if (user) {
       deleteFirestoreVehicle(user.uid, id);
+      deleteRTDBVehicle(user.uid, id);
     }
   };
 
@@ -256,6 +303,7 @@ export const App: React.FC = () => {
 
     if (user) {
       saveFirestoreRecord(user.uid, fullRecord);
+      saveRTDBRecord(user.uid, fullRecord);
     }
 
     // Create next service reminder if requested
@@ -278,6 +326,7 @@ export const App: React.FC = () => {
     setRecords(prev => prev.filter(r => r.id !== id));
     if (user) {
       deleteFirestoreRecord(user.uid, id);
+      deleteRTDBRecord(user.uid, id);
     }
   };
 
@@ -295,6 +344,7 @@ export const App: React.FC = () => {
 
     if (user) {
       saveFirestoreReminder(user.uid, reminder);
+      saveRTDBReminder(user.uid, reminder);
     }
   };
 
@@ -302,6 +352,7 @@ export const App: React.FC = () => {
     setReminders(prev => prev.filter(r => r.id !== id));
     if (user) {
       deleteFirestoreReminder(user.uid, id);
+      deleteRTDBReminder(user.uid, id);
     }
   };
 

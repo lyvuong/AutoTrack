@@ -21,16 +21,20 @@ import {
   orderBy 
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
+import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
+import type { Database } from 'firebase/database';
 import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile } from '../types';
 import { getStoredFirebaseConfig, setStoredFirebaseConfig } from './storage';
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let rtdb: Database | null = null;
 let auth: ReturnType<typeof getAuth> | null = null;
 
 const envConfig: FirebaseConfig | null = import.meta.env.VITE_FIREBASE_API_KEY ? {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || `https://${import.meta.env.VITE_FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
@@ -51,6 +55,11 @@ export const initializeFirebaseService = (customConfig?: FirebaseConfig): boolea
       app = getApp();
     }
     db = getFirestore(app);
+    try {
+      rtdb = getDatabase(app);
+    } catch (rtdbErr) {
+      console.warn('[Firebase] Realtime Database init warning:', rtdbErr);
+    }
     auth = getAuth(app);
     if (customConfig) {
       setStoredFirebaseConfig(customConfig);
@@ -64,7 +73,7 @@ export const initializeFirebaseService = (customConfig?: FirebaseConfig): boolea
 };
 
 export const isFirebaseConfigured = (): boolean => {
-  return db !== null && auth !== null;
+  return (db !== null || rtdb !== null) && auth !== null;
 };
 
 export const subscribeAuth = (callback: (user: UserProfile | null) => void) => {
@@ -244,4 +253,118 @@ export const subscribeFirestoreReminders = (userId: string, callback: (reminders
 export const deleteFirestoreReminder = async (userId: string, reminderId: string): Promise<void> => {
   if (!db) return;
   await deleteDoc(doc(db, 'users', userId, 'reminders', reminderId));
+};
+
+// ==========================================
+// Firebase Realtime Database (RTDB) Handlers
+// ==========================================
+
+export const subscribeRTDBVehicles = (userId: string, callback: (vehicles: Vehicle[]) => void) => {
+  if (!rtdb) return () => {};
+  const vRef = ref(rtdb, `users/${userId}/vehicles`);
+  return onValue(vRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val) {
+      callback([]);
+      return;
+    }
+    const vehiclesList: Vehicle[] = Object.values(val);
+    callback(vehiclesList);
+  }, (err) => {
+    console.error('[RTDB] Vehicles sync error:', err);
+  });
+};
+
+export const saveRTDBVehicle = async (userId: string, vehicle: Vehicle): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    const cleanVehicle = JSON.parse(JSON.stringify(vehicle));
+    await set(ref(rtdb, `users/${userId}/vehicles/${vehicle.id}`), cleanVehicle);
+    console.log('[RTDB] Vehicle saved successfully:', vehicle.id);
+  } catch (err) {
+    console.error('[RTDB] Error saving vehicle:', err);
+  }
+};
+
+export const deleteRTDBVehicle = async (userId: string, vehicleId: string): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    await remove(ref(rtdb, `users/${userId}/vehicles/${vehicleId}`));
+    console.log('[RTDB] Vehicle deleted successfully:', vehicleId);
+  } catch (err) {
+    console.error('[RTDB] Error deleting vehicle:', err);
+  }
+};
+
+export const subscribeRTDBRecords = (userId: string, callback: (records: ServiceRecord[]) => void) => {
+  if (!rtdb) return () => {};
+  const rRef = ref(rtdb, `users/${userId}/records`);
+  return onValue(rRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val) {
+      callback([]);
+      return;
+    }
+    const recordsList: ServiceRecord[] = Object.values(val);
+    recordsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    callback(recordsList);
+  }, (err) => {
+    console.error('[RTDB] Records sync error:', err);
+  });
+};
+
+export const saveRTDBRecord = async (userId: string, record: ServiceRecord): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    const cleanRecord = JSON.parse(JSON.stringify(record));
+    await set(ref(rtdb, `users/${userId}/records/${record.id}`), cleanRecord);
+    console.log('[RTDB] Record saved successfully:', record.id);
+  } catch (err) {
+    console.error('[RTDB] Error saving record:', err);
+  }
+};
+
+export const deleteRTDBRecord = async (userId: string, recordId: string): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    await remove(ref(rtdb, `users/${userId}/records/${recordId}`));
+  } catch (err) {
+    console.error('[RTDB] Error deleting record:', err);
+  }
+};
+
+export const subscribeRTDBReminders = (userId: string, callback: (reminders: ServiceReminder[]) => void) => {
+  if (!rtdb) return () => {};
+  const remRef = ref(rtdb, `users/${userId}/reminders`);
+  return onValue(remRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val) {
+      callback([]);
+      return;
+    }
+    const remindersList: ServiceReminder[] = Object.values(val);
+    callback(remindersList);
+  }, (err) => {
+    console.error('[RTDB] Reminders sync error:', err);
+  });
+};
+
+export const saveRTDBReminder = async (userId: string, reminder: ServiceReminder): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    const cleanReminder = JSON.parse(JSON.stringify(reminder));
+    await set(ref(rtdb, `users/${userId}/reminders/${reminder.id}`), cleanReminder);
+    console.log('[RTDB] Reminder saved successfully:', reminder.id);
+  } catch (err) {
+    console.error('[RTDB] Error saving reminder:', err);
+  }
+};
+
+export const deleteRTDBReminder = async (userId: string, reminderId: string): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    await remove(ref(rtdb, `users/${userId}/reminders/${reminderId}`));
+  } catch (err) {
+    console.error('[RTDB] Error deleting reminder:', err);
+  }
 };
