@@ -160,13 +160,24 @@ export const subscribeFirestoreVehicles = (userId: string, callback: (vehicles: 
 
 export const saveFirestoreVehicle = async (userId: string, vehicle: Vehicle): Promise<void> => {
   if (!db) return;
-  const docRef = doc(db, 'users', userId, 'vehicles', vehicle.id);
-  await setDoc(docRef, vehicle, { merge: true });
+  try {
+    const cleanVehicle = JSON.parse(JSON.stringify(vehicle));
+    const docRef = doc(db, 'users', userId, 'vehicles', vehicle.id);
+    await setDoc(docRef, cleanVehicle, { merge: true });
+    console.log('[Firestore] Vehicle saved successfully:', vehicle.id);
+  } catch (err) {
+    console.error('[Firestore] Error saving vehicle:', err);
+  }
 };
 
 export const deleteFirestoreVehicle = async (userId: string, vehicleId: string): Promise<void> => {
   if (!db) return;
-  await deleteDoc(doc(db, 'users', userId, 'vehicles', vehicleId));
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'vehicles', vehicleId));
+    console.log('[Firestore] Vehicle deleted successfully:', vehicleId);
+  } catch (err) {
+    console.error('[Firestore] Error deleting vehicle:', err);
+  }
 };
 
 export const subscribeFirestoreRecords = (userId: string, callback: (records: ServiceRecord[]) => void) => {
@@ -185,19 +196,35 @@ export const subscribeFirestoreRecords = (userId: string, callback: (records: Se
 
 export const saveFirestoreRecord = async (userId: string, record: ServiceRecord): Promise<void> => {
   if (!db) return;
-  const docRef = doc(db, 'users', userId, 'records', record.id);
-  await setDoc(docRef, record, { merge: true });
+  try {
+    const cleanRecord = JSON.parse(JSON.stringify(record));
+    const docRef = doc(db, 'users', userId, 'records', record.id);
+    await setDoc(docRef, cleanRecord, { merge: true });
+    console.log('[Firestore] Record saved successfully:', record.id);
+  } catch (err) {
+    console.error('[Firestore] Error saving record:', err);
+  }
 };
 
 export const deleteFirestoreRecord = async (userId: string, recordId: string): Promise<void> => {
   if (!db) return;
-  await deleteDoc(doc(db, 'users', userId, 'records', recordId));
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'records', recordId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting record:', err);
+  }
 };
 
 export const saveFirestoreReminder = async (userId: string, reminder: ServiceReminder): Promise<void> => {
   if (!db) return;
-  const docRef = doc(db, 'users', userId, 'reminders', reminder.id);
-  await setDoc(docRef, reminder, { merge: true });
+  try {
+    const cleanReminder = JSON.parse(JSON.stringify(reminder));
+    const docRef = doc(db, 'users', userId, 'reminders', reminder.id);
+    await setDoc(docRef, cleanReminder, { merge: true });
+    console.log('[Firestore] Reminder saved successfully:', reminder.id);
+  } catch (err) {
+    console.error('[Firestore] Error saving reminder:', err);
+  }
 };
 
 export const subscribeFirestoreReminders = (userId: string, callback: (reminders: ServiceReminder[]) => void) => {
