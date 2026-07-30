@@ -1,5 +1,11 @@
 export type FuelType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'Flex-Fuel';
 
+export interface UserAuditInfo {
+  uid: string;
+  displayName: string;
+  email?: string;
+}
+
 export interface Vehicle {
   id: string;
   make: string;
@@ -14,6 +20,8 @@ export interface Vehicle {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  createdBy?: UserAuditInfo;
+  lastEditedBy?: UserAuditInfo;
 }
 
 export type ServiceCategory = 
@@ -46,6 +54,8 @@ export interface ServiceRecord {
   nextServiceMileage?: number;
   nextServiceDate?: string;
   createdAt: string;
+  loggedBy?: UserAuditInfo;
+  lastEditedBy?: UserAuditInfo;
 }
 
 export interface ServiceReminder {
@@ -59,6 +69,8 @@ export interface ServiceReminder {
   intervalMonths?: number;
   isCompleted: boolean;
   notes?: string;
+  createdBy?: UserAuditInfo;
+  lastEditedBy?: UserAuditInfo;
 }
 
 export interface FirebaseConfig {
