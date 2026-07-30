@@ -112,15 +112,6 @@ export const tryAutoSignInGoogle = async (): Promise<UserProfile | null> => {
       photoURL: auth.currentUser.photoURL
     };
   }
-  const shouldAutoSignIn = localStorage.getItem('autotrack_auto_signin_google') === 'true';
-  if (shouldAutoSignIn) {
-    try {
-      return await loginWithGoogle();
-    } catch (err) {
-      console.warn('[Firebase] Automatic Google sign-in deferred:', err);
-      return null;
-    }
-  }
   return null;
 };
 

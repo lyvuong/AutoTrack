@@ -85,37 +85,50 @@ export const App: React.FC = () => {
       const unsubscribeAuth = subscribeAuth((userProfile) => {
         setUser(userProfile);
         if (userProfile) {
+          let hasSeededVehicles = false;
+          let hasSeededRecords = false;
+          let hasSeededReminders = false;
+
           // Subscribe to cloud Firestore changes
           const unSubVehicles = subscribeFirestoreVehicles(userProfile.uid, (cloudVehicles) => {
-            if (cloudVehicles.length > 0) {
+            if (!hasSeededVehicles && cloudVehicles.length === 0) {
+              hasSeededVehicles = true;
+              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(v => saveFirestoreVehicle(userProfile.uid, v));
+              }
+            } else {
+              hasSeededVehicles = true;
               setVehicles(cloudVehicles);
               saveLocalVehicles(cloudVehicles);
-            } else {
-              // Seed existing local non-demo vehicles to Firestore if user's cloud database is empty
-              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
-              local.forEach(v => saveFirestoreVehicle(userProfile.uid, v));
             }
           });
 
           const unSubRecords = subscribeFirestoreRecords(userProfile.uid, (cloudRecords) => {
-            if (cloudRecords.length > 0) {
+            if (!hasSeededRecords && cloudRecords.length === 0) {
+              hasSeededRecords = true;
+              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(r => saveFirestoreRecord(userProfile.uid, r));
+              }
+            } else {
+              hasSeededRecords = true;
               setRecords(cloudRecords);
               saveLocalRecords(cloudRecords);
-            } else {
-              // Seed existing local non-demo records to Firestore
-              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
-              local.forEach(r => saveFirestoreRecord(userProfile.uid, r));
             }
           });
 
           const unSubReminders = subscribeFirestoreReminders(userProfile.uid, (cloudReminders) => {
-            if (cloudReminders.length > 0) {
+            if (!hasSeededReminders && cloudReminders.length === 0) {
+              hasSeededReminders = true;
+              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
+              if (local.length > 0) {
+                local.forEach(rem => saveFirestoreReminder(userProfile.uid, rem));
+              }
+            } else {
+              hasSeededReminders = true;
               setReminders(cloudReminders);
               saveLocalReminders(cloudReminders);
-            } else {
-              // Seed existing local non-demo reminders to Firestore
-              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
-              local.forEach(rem => saveFirestoreReminder(userProfile.uid, rem));
             }
           });
 
