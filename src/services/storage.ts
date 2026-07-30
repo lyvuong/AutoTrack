@@ -5,6 +5,7 @@ const RECORDS_KEY = 'autotrack_service_records';
 const REMINDERS_KEY = 'autotrack_reminders';
 const FIREBASE_CONFIG_KEY = 'autotrack_firebase_config';
 const ACTIVE_VEHICLE_KEY = 'autotrack_active_vehicle';
+const FAMILY_CODE_KEY = 'autotrack_family_code';
 
 // Sample initial demo dataset
 const INITIAL_VEHICLES: Vehicle[] = [
@@ -262,6 +263,18 @@ export const getActiveVehicleId = (): string => {
 
 export const setActiveVehicleId = (id: string): void => {
   localStorage.setItem(ACTIVE_VEHICLE_KEY, id);
+};
+
+export const getStoredFamilyCode = (): string => {
+  return (localStorage.getItem(FAMILY_CODE_KEY) || '').toUpperCase().trim();
+};
+
+export const setStoredFamilyCode = (code: string): void => {
+  if (!code || !code.trim()) {
+    localStorage.removeItem(FAMILY_CODE_KEY);
+  } else {
+    localStorage.setItem(FAMILY_CODE_KEY, code.toUpperCase().trim());
+  }
 };
 
 // Data Backup Export & Import Utilities
