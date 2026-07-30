@@ -164,16 +164,22 @@ const getStorageTarget = (userId: string, familyCode?: string) => {
   return { root: 'users', id: userId };
 };
 
-export const subscribeFirestoreVehicles = (userId: string, familyCode: string | undefined, callback: (vehicles: Vehicle[]) => void) => {
+export const subscribeFirestoreVehicles = (
+  userId: string, 
+  familyCodeOrCb?: string | ((vehicles: Vehicle[]) => void), 
+  callback?: (vehicles: Vehicle[]) => void
+) => {
   if (!db) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const q = query(collection(db, target.root, target.id, 'vehicles'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const vehicles: Vehicle[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as Vehicle));
-    callback(vehicles);
+    if (cb) cb(vehicles);
   }, (error) => {
     console.error('[Firestore] Vehicles sync error:', error);
   });
@@ -203,16 +209,22 @@ export const deleteFirestoreVehicle = async (userId: string, vehicleId: string, 
   }
 };
 
-export const subscribeFirestoreRecords = (userId: string, familyCode: string | undefined, callback: (records: ServiceRecord[]) => void) => {
+export const subscribeFirestoreRecords = (
+  userId: string, 
+  familyCodeOrCb?: string | ((records: ServiceRecord[]) => void), 
+  callback?: (records: ServiceRecord[]) => void
+) => {
   if (!db) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const q = query(collection(db, target.root, target.id, 'records'), orderBy('date', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const records: ServiceRecord[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as ServiceRecord));
-    callback(records);
+    if (cb) cb(records);
   }, (error) => {
     console.error('[Firestore] Records sync error:', error);
   });
@@ -254,16 +266,22 @@ export const saveFirestoreReminder = async (userId: string, reminder: ServiceRem
   }
 };
 
-export const subscribeFirestoreReminders = (userId: string, familyCode: string | undefined, callback: (reminders: ServiceReminder[]) => void) => {
+export const subscribeFirestoreReminders = (
+  userId: string, 
+  familyCodeOrCb?: string | ((reminders: ServiceReminder[]) => void), 
+  callback?: (reminders: ServiceReminder[]) => void
+) => {
   if (!db) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const q = query(collection(db, target.root, target.id, 'reminders'));
   return onSnapshot(q, (snapshot) => {
     const reminders: ServiceReminder[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as ServiceReminder));
-    callback(reminders);
+    if (cb) cb(reminders);
   }, (error) => {
     console.error('[Firestore] Reminders sync error:', error);
   });
@@ -279,18 +297,24 @@ export const deleteFirestoreReminder = async (userId: string, reminderId: string
 // Firebase Realtime Database (RTDB) Handlers
 // ==========================================
 
-export const subscribeRTDBVehicles = (userId: string, familyCode: string | undefined, callback: (vehicles: Vehicle[]) => void) => {
+export const subscribeRTDBVehicles = (
+  userId: string, 
+  familyCodeOrCb?: string | ((vehicles: Vehicle[]) => void), 
+  callback?: (vehicles: Vehicle[]) => void
+) => {
   if (!rtdb) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const vRef = ref(rtdb, `${target.root}/${target.id}/vehicles`);
   return onValue(vRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
-      callback([]);
+      if (cb) cb([]);
       return;
     }
     const vehiclesList: Vehicle[] = Object.values(val);
-    callback(vehiclesList);
+    if (cb) cb(vehiclesList);
   }, (err) => {
     console.error('[RTDB] Vehicles sync error:', err);
   });
@@ -319,19 +343,25 @@ export const deleteRTDBVehicle = async (userId: string, vehicleId: string, famil
   }
 };
 
-export const subscribeRTDBRecords = (userId: string, familyCode: string | undefined, callback: (records: ServiceRecord[]) => void) => {
+export const subscribeRTDBRecords = (
+  userId: string, 
+  familyCodeOrCb?: string | ((records: ServiceRecord[]) => void), 
+  callback?: (records: ServiceRecord[]) => void
+) => {
   if (!rtdb) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const rRef = ref(rtdb, `${target.root}/${target.id}/records`);
   return onValue(rRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
-      callback([]);
+      if (cb) cb([]);
       return;
     }
     const recordsList: ServiceRecord[] = Object.values(val);
     recordsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    callback(recordsList);
+    if (cb) cb(recordsList);
   }, (err) => {
     console.error('[RTDB] Records sync error:', err);
   });
@@ -359,18 +389,24 @@ export const deleteRTDBRecord = async (userId: string, recordId: string, familyC
   }
 };
 
-export const subscribeRTDBReminders = (userId: string, familyCode: string | undefined, callback: (reminders: ServiceReminder[]) => void) => {
+export const subscribeRTDBReminders = (
+  userId: string, 
+  familyCodeOrCb?: string | ((reminders: ServiceReminder[]) => void), 
+  callback?: (reminders: ServiceReminder[]) => void
+) => {
   if (!rtdb) return () => {};
-  const target = getStorageTarget(userId, familyCode);
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
   const remRef = ref(rtdb, `${target.root}/${target.id}/reminders`);
   return onValue(remRef, (snapshot) => {
     const val = snapshot.val();
     if (!val) {
-      callback([]);
+      if (cb) cb([]);
       return;
     }
     const remindersList: ServiceReminder[] = Object.values(val);
-    callback(remindersList);
+    if (cb) cb(remindersList);
   }, (err) => {
     console.error('[RTDB] Reminders sync error:', err);
   });
