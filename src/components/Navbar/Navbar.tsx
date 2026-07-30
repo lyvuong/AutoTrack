@@ -1,5 +1,5 @@
 import React from 'react';
-import { Car, PlusCircle, Wifi, WifiOff, Cloud, Database, Settings } from 'lucide-react';
+import { PlusCircle, Wifi, WifiOff, Cloud, Database, Settings } from 'lucide-react';
 import type { Vehicle, UserProfile } from '../../types';
 
 interface NavbarProps {
