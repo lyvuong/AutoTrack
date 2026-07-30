@@ -1,32 +1,187 @@
-# React + TypeScript + Vite
+# 🚘 AutoTrack — Vehicle Maintenance & Repair Log PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat-square&logo=cloudflare)](https://autotrack-app.pages.dev)
+[![React](https://img.shields.io/badge/React-18-cyan?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-6-purple?style=flat-square&logo=vite)](https://vitejs.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-orange?style=flat-square&logo=firebase)](https://firebase.google.com)
 
-Currently, two official plugins are available:
+**AutoTrack** is a modern, offline-capable Progressive Web Application (PWA) designed to track vehicle profiles, service history, maintenance schedules, repair costs, and fluid/filter specifications. It features real-time cloud sync powered by **Google Firebase**, multi-user audit badges, and a **Shared Household Garage** feature that allows families or teams to manage the same vehicle fleet together in real time.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🚘 **Vehicle Garage Management**: Keep detailed profiles for all your cars, trucks, and motorcycles. Store VIN, license plate, current mileage, engine/transmission specs, oil type, filter part numbers, and custom notes.
+- 📋 **Comprehensive Service Logs**: Record maintenance procedures (Oil Changes, Brakes, Tires, Battery, Inspections, Repairs) with dates, odometer readings, itemized costs, service providers, and notes.
+- ⏰ **Smart Maintenance Reminders**: Stay ahead of service with mileage-based and date-based reminders automatically categorized by urgency (*Overdue*, *Due Soon*, *Good Condition*).
+- 📊 **Interactive Financial Analytics**: View cost summaries per vehicle, total lifetime maintenance expenses, and monthly cost breakdowns.
+- 👨‍👩‍👧‍👦 **Shared Household Garage Sync**: Real-time cross-device sync via a shared **Household Code** (e.g. `VUONG-FAMILY`). Family members using their own Google account view and update the exact same shared garage seamlessly.
+- 👤 **Multi-User Audit Badges**: Automatically tags every vehicle card and service log entry with audit metadata (`👤 Logged by [User]`, `✏️ Edited by [User]`).
+- 🔐 **Secure Google OAuth Gate**: Mandatory login screen with account picker ensuring privacy and security across shared devices.
+- 💾 **Offline-First & Data Portability**: Works offline with LocalStorage caching. Backup and restore your complete dataset anytime via JSON export/import.
+- ⚙️ **Protected Advanced Settings**: Firebase credentials and demo dataset controls are tucked away safely into a lockable, protected Advanced Setup section to prevent accidental changes.
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 🚀 Quick Start & Local Development
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm** or **yarn**
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/lyvuong/AutoTrack.git
+   cd AutoTrack
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Start the local development server**:
+   ```bash
+   npm run dev
+   ```
+   Open your browser and navigate to `http://localhost:3000`.
+
+4. **Build for production**:
+   ```bash
+   npm run build
+   ```
+
+---
+
+## 🔥 Setting Up Google Firebase Cloud Sync
+
+AutoTrack works out of the box in **Local Storage / Demo Mode**. To enable **Google Auth**, **Cloud Sync**, and **Real-Time Household Garage Sharing**, set up a free Google Firebase project:
+
+### Step 1: Create a Firebase Project
+1. Go to the [Google Firebase Console](https://console.firebase.google.com/).
+2. Click **Add project** and follow the prompts to name your project (e.g., `my-autotrack-app`).
+3. Click **Create project**.
+
+---
+
+### Step 2: Enable Firebase Authentication
+1. In your Firebase console sidebar, navigate to **Build > Authentication**.
+2. Click **Get Started**.
+3. Under **Sign-in method**, select **Google**.
+4. Enable the provider, configure your support email, and click **Save**.
+5. Under the **Settings** tab in Authentication, scroll to **Authorized domains**.
+   - Add `localhost` (for local development).
+   - Add your production deployment domain (e.g., `my-autotrack.pages.dev`).
+
+---
+
+### Step 3: Set Up Cloud Firestore Database
+1. In the sidebar, navigate to **Build > Firestore Database**.
+2. Click **Create database**, select a database location near you, and choose **Start in production mode**.
+3. Go to the **Rules** tab and paste the following security rules to allow authenticated users to access shared garage data:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read & write shared vehicle data
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
 ```
+4. Click **Publish**.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+### Step 4: Set Up Realtime Database (Optional)
+If you want instant real-time websocket updates across devices:
+1. In the sidebar, navigate to **Build > Realtime Database**.
+2. Click **Create database** and select your location.
+3. In the **Rules** tab, set:
+```json
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null"
+  }
+}
+```
+4. Click **Publish**.
+
+---
+
+### Step 5: Get Your Web Configuration Credentials
+1. Go to **Project Settings** (gear icon near top left) > **General**.
+2. Scroll down to **Your apps** and click the **Web icon** (`</>`) to register a web app.
+3. Enter an app nickname (e.g., `AutoTrack Web`) and click **Register app**.
+4. Copy your `firebaseConfig` keys:
+
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "my-autotrack-app.firebaseapp.com",
+  projectId: "my-autotrack-app",
+  storageBucket: "my-autotrack-app.firebasestorage.app",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef..."
+};
+```
+
+---
+
+### Step 6: Connect Credentials to AutoTrack
+
+You can configure credentials using either **Environment Variables** or the **In-App Settings UI**:
+
+#### Method A: Environment Variables (Recommended for Deployed Builds)
+Create a `.env` file in the project root directory:
+
+```env
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=my-autotrack-app.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=my-autotrack-app
+VITE_FIREBASE_STORAGE_BUCKET=my-autotrack-app.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
+VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef...
+```
+
+#### Method B: In-App Settings UI (No Rebuild Required)
+1. Open the AutoTrack app in your browser.
+2. Click the ⚙️ **Settings** button in the top navigation bar.
+3. Scroll down to **Advanced Firebase & Demo Data Controls**.
+4. Click `[ 🔓 Unlock to View & Edit ]`.
+5. Enter your `API Key` and `Project ID` (plus optional `Auth Domain` and `App ID`), then click **Save Custom Firebase Keys**.
+
+---
+
+## 👨‍👩‍👧‍👦 How Shared Household Garage Works
+
+1. **Host Setup**:
+   - Open **Settings** > **Shared Family Garage Sync**.
+   - Enter a custom Household Code (e.g., `SMITH-GARAGE` or `MY-FAMILY-2026`) and click **Save & Join Household**.
+2. **Family Member / Spouse Setup**:
+   - Have family members sign in on their own phone or browser with their Google account.
+   - Enter the **exact same Household Code** in their Settings.
+3. **Instant Real-Time Sync**:
+   - All vehicles, service logs, and maintenance reminders created by any family member will sync across devices in real time!
+   - Audit badges will show who logged each service (`👤 Logged by [Name]`).
+
+---
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons
+- **Build Tool**: Vite 6, SWC
+- **Backend & Auth**: Google Firebase (Authentication & Cloud Firestore)
+- **Deployment**: Cloudflare Pages, Vercel, Netlify
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
