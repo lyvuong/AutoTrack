@@ -302,21 +302,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <h2 className="text-base font-bold text-white">Data Backup & Export Options</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
           <button
             onClick={handleExportJSON}
-            className="flex flex-col items-center justify-center p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition-all text-center group"
+            className="flex items-center gap-3 p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-emerald-500/40 transition-all text-left group"
           >
-            <Download className="w-6 h-6 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-xs text-white">Export Full JSON Backup</span>
-            <span className="text-[11px] text-slate-400 mt-1">Vehicles, logs & reminders</span>
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl group-hover:scale-105 transition-transform">
+              <Download className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="font-bold text-sm text-white block">Export Full JSON Backup</span>
+              <span className="text-xs text-slate-400">Download all vehicles, logs & reminders as JSON</span>
+            </div>
           </button>
 
-          <label className="flex flex-col items-center justify-center p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-cyan-500/40 transition-all text-center cursor-pointer group">
-            <Upload className="w-6 h-6 text-cyan-400 mb-2 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-xs text-white">Import JSON Backup</span>
-            <span className="text-[11px] text-slate-400 mt-1">Restore from saved file</span>
+          <label className="flex items-center gap-3 p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-cyan-500/40 transition-all text-left cursor-pointer group">
+            <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl group-hover:scale-105 transition-transform">
+              <Upload className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="font-bold text-sm text-white block">Import JSON Backup</span>
+              <span className="text-xs text-slate-400">Restore dataset from a saved JSON file</span>
+            </div>
             <input
               type="file"
               accept=".json"
@@ -324,33 +332,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="hidden"
             />
           </label>
-
-          <button
-            onClick={() => {
-              if (confirm('Are you sure you want to remove all initial sample/demo vehicles and service logs?')) {
-                if (onClearDemoData) onClearDemoData();
-                else onRefreshData();
-              }
-            }}
-            className="flex flex-col items-center justify-center p-4 bg-red-950/20 hover:bg-red-950/40 rounded-xl border border-red-800/40 hover:border-red-600 transition-all text-center group"
-          >
-            <RefreshCw className="w-6 h-6 text-red-400 mb-2 group-hover:rotate-180 transition-transform duration-500" />
-            <span className="font-bold text-xs text-red-300">Purge Demo Data</span>
-            <span className="text-[11px] text-slate-400 mt-1">Remove sample cars & logs</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (confirm('Restore default sample demo vehicles and records?')) {
-                onRestoreSampleData();
-              }
-            }}
-            className="flex flex-col items-center justify-center p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-amber-500/40 transition-all text-center group"
-          >
-            <RefreshCw className="w-6 h-6 text-amber-400 mb-2 group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-xs text-white">Restore Demo Dataset</span>
-            <span className="text-[11px] text-slate-400 mt-1">Load sample vehicles & logs</span>
-          </button>
 
         </div>
       </div>
@@ -368,7 +349,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-white">Advanced Firebase Setup</span>
+                <span className="font-bold text-sm text-white">Advanced Firebase & Demo Data Controls</span>
                 <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded border ${
                   isFirebaseActive ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-slate-800 text-slate-400 border-slate-700'
                 }`}>
@@ -376,7 +357,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Custom Google Cloud API keys & Project ID override (Protected).
+                Custom Google Cloud API keys, Project ID override & Demo dataset management (Protected).
               </p>
             </div>
           </div>
@@ -395,7 +376,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="space-y-1">
                 <span className="font-bold block">Protected System Settings</span>
                 <p className="text-amber-300/80">
-                  These API keys connect AutoTrack to your Google Cloud Firestore database. Changing these keys by accident will break cloud synchronization for your account.
+                  These system credentials link AutoTrack to your Google Cloud Firestore database. Managing demo data or changing credentials by mistake will alter your saved database.
                 </p>
               </div>
             </div>
@@ -404,7 +385,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex items-center justify-between bg-slate-900 p-3.5 rounded-xl border border-slate-800">
               <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
                 {isConfigUnlocked ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
-                {isConfigUnlocked ? 'Editing Unlocked' : 'Configurations Hidden & Locked'}
+                {isConfigUnlocked ? 'Editing Unlocked' : 'Advanced Controls Hidden & Locked'}
               </span>
               <button
                 type="button"
@@ -421,77 +402,122 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {isConfigUnlocked && (
-              <form onSubmit={handleSaveFirebaseConfig} className="space-y-4 pt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
-                    <input
-                      type="text"
-                      placeholder="AIzaSy..."
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-                    />
+              <div className="space-y-6 pt-2">
+                
+                {/* Firebase Keys Form */}
+                <form onSubmit={handleSaveFirebaseConfig} className="space-y-4">
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Custom Firebase Credentials</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
+                      <input
+                        type="text"
+                        placeholder="AIzaSy..."
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
+                      <input
+                        type="text"
+                        placeholder="my-autotrack-app"
+                        value={projectId}
+                        onChange={(e) => setProjectId(e.target.value)}
+                        className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Project ID *</label>
-                    <input
-                      type="text"
-                      placeholder="my-autotrack-app"
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
-                    <input
-                      type="text"
-                      placeholder="my-autotrack-app.firebaseapp.com"
-                      value={authDomain}
-                      onChange={(e) => setAuthDomain(e.target.value)}
-                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Auth Domain</label>
+                      <input
+                        type="text"
+                        placeholder="my-autotrack-app.firebaseapp.com"
+                        value={authDomain}
+                        onChange={(e) => setAuthDomain(e.target.value)}
+                        className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
+                      <input
+                        type="text"
+                        placeholder="1:123456789:web:abcdef..."
+                        value={appId}
+                        onChange={(e) => setAppId(e.target.value)}
+                        className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">App ID</label>
-                    <input
-                      type="text"
-                      placeholder="1:123456789:web:abcdef..."
-                      value={appId}
-                      onChange={(e) => setAppId(e.target.value)}
-                      className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
-                    />
+
+                  {configMessage && (
+                    <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
+                      {configMessage}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20"
+                    >
+                      Save Custom Firebase Keys
+                    </button>
+                    {storedConfig && (
+                      <button
+                        type="button"
+                        onClick={handleClearFirebaseConfig}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700"
+                      >
+                        Reset to Default Env
+                      </button>
+                    )}
                   </div>
-                </div>
+                </form>
 
-                {configMessage && (
-                  <p className="text-xs font-semibold text-cyan-300 bg-cyan-950/60 p-2.5 rounded-xl border border-cyan-800">
-                    {configMessage}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="submit"
-                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20"
-                  >
-                    Save Custom Firebase Keys
-                  </button>
-                  {storedConfig && (
+                {/* Demo Data Management Sub-Section */}
+                <div className="pt-5 border-t border-slate-800 space-y-3">
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Demo & Sample Dataset Controls</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={handleClearFirebaseConfig}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700"
+                      onClick={() => {
+                        if (confirm('Are you sure you want to remove all initial sample/demo vehicles and service logs?')) {
+                          if (onClearDemoData) onClearDemoData();
+                          else onRefreshData();
+                        }
+                      }}
+                      className="flex items-center gap-3 p-3.5 bg-red-950/20 hover:bg-red-950/40 rounded-xl border border-red-800/40 hover:border-red-600 transition-all text-left group"
                     >
-                      Reset to Default Env
+                      <RefreshCw className="w-5 h-5 text-red-400 shrink-0 group-hover:rotate-180 transition-transform duration-500" />
+                      <div>
+                        <span className="font-bold text-xs text-red-300 block">Purge Demo Data</span>
+                        <span className="text-[11px] text-slate-400">Remove sample cars & records</span>
+                      </div>
                     </button>
-                  )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Restore default sample demo vehicles and records?')) {
+                          onRestoreSampleData();
+                        }
+                      }}
+                      className="flex items-center gap-3 p-3.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 hover:border-amber-500/40 transition-all text-left group"
+                    >
+                      <RefreshCw className="w-5 h-5 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
+                      <div>
+                        <span className="font-bold text-xs text-white block">Restore Demo Dataset</span>
+                        <span className="text-[11px] text-slate-400">Load initial sample vehicles & logs</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </form>
+
+              </div>
             )}
 
           </div>
