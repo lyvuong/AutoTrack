@@ -284,6 +284,18 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
                   </div>
                 )}
 
+                {/* Multi-User Audit Tracking Info */}
+                {(r.loggedBy || r.lastEditedBy) && (
+                  <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800/80 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+                    {r.loggedBy && (
+                      <span>👤 Logged by <strong className="text-slate-200">{r.loggedBy.displayName}</strong></span>
+                    )}
+                    {r.lastEditedBy && r.lastEditedBy.uid !== r.loggedBy?.uid && (
+                      <span>✏️ Edited by <strong className="text-slate-300">{r.lastEditedBy.displayName}</strong></span>
+                    )}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/60 no-print">
                   <button
@@ -346,6 +358,12 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
                         </div>
                         {r.notes && (
                           <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 italic max-w-xs">{r.notes}</p>
+                        )}
+                        {(r.loggedBy || r.lastEditedBy) && (
+                          <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            {r.loggedBy && <span>👤 {r.loggedBy.displayName}</span>}
+                            {r.lastEditedBy && r.lastEditedBy.uid !== r.loggedBy?.uid && <span>(✏️ {r.lastEditedBy.displayName})</span>}
+                          </p>
                         )}
                       </td>
                       <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-300">
