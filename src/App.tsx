@@ -11,6 +11,7 @@ import { ServiceFormModal } from './components/Services/ServiceFormModal';
 import { VehicleModal } from './components/Vehicles/VehicleModal';
 import { ReminderModal } from './components/Reminders/ReminderModal';
 import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
+import { LoginScreen } from './components/Auth/LoginScreen';
 
 import type { Vehicle, ServiceRecord, ServiceReminder, UserProfile, ActiveTab } from './types';
 import { 
@@ -23,13 +24,16 @@ import {
   clearDemoData,
   restoreSampleData,
   getActiveVehicleId, 
-  setActiveVehicleId 
+  setActiveVehicleId,
+  getStoredFamilyCode,
+  setStoredFamilyCode
 } from './services/storage';
 
 import { 
   initializeFirebaseService, 
   isFirebaseConfigured, 
   subscribeAuth, 
+  loginWithGoogle,
   tryAutoSignInGoogle,
   subscribeFirestoreVehicles, 
   subscribeFirestoreRecords, 
@@ -57,11 +61,18 @@ export const App: React.FC = () => {
   const [records, setRecords] = useState<ServiceRecord[]>(() => loadLocalRecords());
   const [reminders, setReminders] = useState<ServiceReminder[]>(() => loadLocalReminders());
   const [activeVehicleId, setActiveVehicleIdState] = useState<string>(() => getActiveVehicleId());
+  const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile | null>(null);
+
+  const handleSetFamilyCode = (code: string) => {
+    setStoredFamilyCode(code);
+    setFamilyCodeState(code.toUpperCase().trim());
+  };
 
   // Modals state
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -88,18 +99,24 @@ export const App: React.FC = () => {
   // Initialize Firebase service if configured
   useEffect(() => {
     const initialized = initializeFirebaseService();
-    setIsFirebaseActive(initialized && isFirebaseConfigured());
+    const active = initialized && isFirebaseConfigured();
+    setIsFirebaseActive(active);
+
+    if (!active) {
+      setIsAuthLoading(false);
+    }
 
     if (initialized) {
       const unsubscribeAuth = subscribeAuth((userProfile) => {
         setUser(userProfile);
+        setIsAuthLoading(false);
         if (userProfile) {
           let hasSeededVehicles = false;
           let hasSeededRecords = false;
           let hasSeededReminders = false;
 
           // Subscribe to cloud Firestore & Realtime Database changes
-          const unSubVehiclesFS = subscribeFirestoreVehicles(userProfile.uid, (cloudVehicles) => {
+          const unSubVehiclesFS = subscribeFirestoreVehicles(userProfile.uid, familyCode, (cloudVehicles) => {
             if (cloudVehicles.length > 0) {
               hasSeededVehicles = true;
               setVehicles(cloudVehicles);
@@ -108,14 +125,14 @@ export const App: React.FC = () => {
               const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
               if (local.length > 0) {
                 local.forEach(v => {
-                  saveFirestoreVehicle(userProfile.uid, v);
-                  saveRTDBVehicle(userProfile.uid, v);
+                  saveFirestoreVehicle(userProfile.uid, v, familyCode);
+                  saveRTDBVehicle(userProfile.uid, v, familyCode);
                 });
               }
             }
           });
 
-          const unSubVehiclesRTDB = subscribeRTDBVehicles(userProfile.uid, (rtdbVehicles) => {
+          const unSubVehiclesRTDB = subscribeRTDBVehicles(userProfile.uid, familyCode, (rtdbVehicles) => {
             if (rtdbVehicles.length > 0) {
               hasSeededVehicles = true;
               setVehicles(rtdbVehicles);
@@ -123,7 +140,7 @@ export const App: React.FC = () => {
             }
           });
 
-          const unSubRecordsFS = subscribeFirestoreRecords(userProfile.uid, (cloudRecords) => {
+          const unSubRecordsFS = subscribeFirestoreRecords(userProfile.uid, familyCode, (cloudRecords) => {
             if (cloudRecords.length > 0) {
               hasSeededRecords = true;
               setRecords(cloudRecords);
@@ -132,14 +149,14 @@ export const App: React.FC = () => {
               const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
                 local.forEach(r => {
-                  saveFirestoreRecord(userProfile.uid, r);
-                  saveRTDBRecord(userProfile.uid, r);
+                  saveFirestoreRecord(userProfile.uid, r, familyCode);
+                  saveRTDBRecord(userProfile.uid, r, familyCode);
                 });
               }
             }
           });
 
-          const unSubRecordsRTDB = subscribeRTDBRecords(userProfile.uid, (rtdbRecords) => {
+          const unSubRecordsRTDB = subscribeRTDBRecords(userProfile.uid, familyCode, (rtdbRecords) => {
             if (rtdbRecords.length > 0) {
               hasSeededRecords = true;
               setRecords(rtdbRecords);
@@ -147,7 +164,7 @@ export const App: React.FC = () => {
             }
           });
 
-          const unSubRemindersFS = subscribeFirestoreReminders(userProfile.uid, (cloudReminders) => {
+          const unSubRemindersFS = subscribeFirestoreReminders(userProfile.uid, familyCode, (cloudReminders) => {
             if (cloudReminders.length > 0) {
               hasSeededReminders = true;
               setReminders(cloudReminders);
@@ -156,14 +173,14 @@ export const App: React.FC = () => {
               const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
                 local.forEach(rem => {
-                  saveFirestoreReminder(userProfile.uid, rem);
-                  saveRTDBReminder(userProfile.uid, rem);
+                  saveFirestoreReminder(userProfile.uid, rem, familyCode);
+                  saveRTDBReminder(userProfile.uid, rem, familyCode);
                 });
               }
             }
           });
 
-          const unSubRemindersRTDB = subscribeRTDBReminders(userProfile.uid, (rtdbReminders) => {
+          const unSubRemindersRTDB = subscribeRTDBReminders(userProfile.uid, familyCode, (rtdbReminders) => {
             if (rtdbReminders.length > 0) {
               hasSeededReminders = true;
               setReminders(rtdbReminders);
@@ -187,7 +204,7 @@ export const App: React.FC = () => {
 
       return () => unsubscribeAuth();
     }
-  }, []);
+  }, [familyCode]);
 
   // Always persist Local Storage changes for instant offline availability & fallback
   useEffect(() => {
@@ -217,8 +234,8 @@ export const App: React.FC = () => {
       if (v.id === vehicleId) {
         const updated = { ...v, currentMileage: newMileage, updatedAt: new Date().toISOString() };
         if (user) {
-          saveFirestoreVehicle(user.uid, updated);
-          saveRTDBVehicle(user.uid, updated);
+          saveFirestoreVehicle(user.uid, updated, familyCode);
+          saveRTDBVehicle(user.uid, updated, familyCode);
         }
         return updated;
       }
@@ -249,8 +266,8 @@ export const App: React.FC = () => {
     handleSelectVehicle(fullVehicle.id);
 
     if (user) {
-      saveFirestoreVehicle(user.uid, fullVehicle);
-      saveRTDBVehicle(user.uid, fullVehicle);
+      saveFirestoreVehicle(user.uid, fullVehicle, familyCode);
+      saveRTDBVehicle(user.uid, fullVehicle, familyCode);
     }
   };
 
@@ -263,8 +280,8 @@ export const App: React.FC = () => {
       if (remaining.length > 0) handleSelectVehicle(remaining[0].id);
     }
     if (user) {
-      deleteFirestoreVehicle(user.uid, id);
-      deleteRTDBVehicle(user.uid, id);
+      deleteFirestoreVehicle(user.uid, id, familyCode);
+      deleteRTDBVehicle(user.uid, id, familyCode);
     }
   };
 
@@ -302,8 +319,8 @@ export const App: React.FC = () => {
     }
 
     if (user) {
-      saveFirestoreRecord(user.uid, fullRecord);
-      saveRTDBRecord(user.uid, fullRecord);
+      saveFirestoreRecord(user.uid, fullRecord, familyCode);
+      saveRTDBRecord(user.uid, fullRecord, familyCode);
     }
 
     // Create next service reminder if requested
@@ -325,8 +342,8 @@ export const App: React.FC = () => {
   const handleDeleteRecord = (id: string) => {
     setRecords(prev => prev.filter(r => r.id !== id));
     if (user) {
-      deleteFirestoreRecord(user.uid, id);
-      deleteRTDBRecord(user.uid, id);
+      deleteFirestoreRecord(user.uid, id, familyCode);
+      deleteRTDBRecord(user.uid, id, familyCode);
     }
   };
 
@@ -343,16 +360,16 @@ export const App: React.FC = () => {
     });
 
     if (user) {
-      saveFirestoreReminder(user.uid, reminder);
-      saveRTDBReminder(user.uid, reminder);
+      saveFirestoreReminder(user.uid, reminder, familyCode);
+      saveRTDBReminder(user.uid, reminder, familyCode);
     }
   };
 
   const handleDeleteReminder = (id: string) => {
     setReminders(prev => prev.filter(r => r.id !== id));
     if (user) {
-      deleteFirestoreReminder(user.uid, id);
-      deleteRTDBReminder(user.uid, id);
+      deleteFirestoreReminder(user.uid, id, familyCode);
+      deleteRTDBReminder(user.uid, id, familyCode);
     }
   };
 
@@ -399,6 +416,21 @@ export const App: React.FC = () => {
     setRecords(loadLocalRecords());
     setReminders(loadLocalReminders());
   };
+
+  if (isFirebaseActive && isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-slate-400">Loading AutoTrack...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isFirebaseActive && !user) {
+    return <LoginScreen onGoogleSignIn={loginWithGoogle} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -452,9 +484,11 @@ export const App: React.FC = () => {
           <VehicleGarage
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
+            familyCode={familyCode}
             onSelectVehicle={handleSelectVehicle}
             onSaveVehicle={handleSaveVehicle}
             onDeleteVehicle={handleDeleteVehicle}
+            onOpenSettings={() => setActiveTab('settings')}
           />
         )}
 
@@ -499,6 +533,8 @@ export const App: React.FC = () => {
           <SettingsModal
             user={user}
             isFirebaseActive={isFirebaseActive}
+            familyCode={familyCode}
+            onSetFamilyCode={handleSetFamilyCode}
             onRefreshData={handleRefreshData}
             onClearDemoData={handleClearDemoData}
             onRestoreSampleData={handleRestoreSampleData}
