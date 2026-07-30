@@ -204,7 +204,7 @@ You can also deploy directly from your local terminal using Cloudflare's **Wrang
 
 ### 🌐 Important Cloudflare Configuration Notes
 
-- **Single-Page Application (SPA) Directives**: AutoTrack includes a `public/_redirects` file (`/* /index.html 200`) so client-side routing works cleanly without 404 errors when refreshing sub-pages.
+- **`_redirects` File Directive**: AutoTrack includes a `public/_redirects` file that should be left **empty** (or contain comments only). Do not place rule lines like `/* /index.html 200` inside `_redirects`, as Cloudflare Pages will throw a build/deploy error when processing that syntax for Vite SPAs.
 - **Firebase Authorized Domains**: After deploying, copy your live Cloudflare URL (e.g. `https://autotrack-app.pages.dev` or custom domain) and add it to **Firebase Console > Authentication > Settings > Authorized Domains** so Google Sign-In functions properly.
 
 ---
