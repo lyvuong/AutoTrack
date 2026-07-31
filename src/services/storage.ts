@@ -265,6 +265,8 @@ export const setActiveVehicleId = (id: string): void => {
   localStorage.setItem(ACTIVE_VEHICLE_KEY, id);
 };
 
+const FAMILY_CODE_PASSCODE_KEY = 'autotrack_family_passcode';
+
 export const getStoredFamilyCode = (): string => {
   return (localStorage.getItem(FAMILY_CODE_KEY) || '').toUpperCase().trim();
 };
@@ -272,8 +274,21 @@ export const getStoredFamilyCode = (): string => {
 export const setStoredFamilyCode = (code: string): void => {
   if (!code || !code.trim()) {
     localStorage.removeItem(FAMILY_CODE_KEY);
+    localStorage.removeItem(FAMILY_CODE_PASSCODE_KEY);
   } else {
     localStorage.setItem(FAMILY_CODE_KEY, code.toUpperCase().trim());
+  }
+};
+
+export const getStoredFamilyPasscode = (): string => {
+  return (localStorage.getItem(FAMILY_CODE_PASSCODE_KEY) || '').trim();
+};
+
+export const setStoredFamilyPasscode = (passcode: string): void => {
+  if (!passcode || !passcode.trim()) {
+    localStorage.removeItem(FAMILY_CODE_PASSCODE_KEY);
+  } else {
+    localStorage.setItem(FAMILY_CODE_PASSCODE_KEY, passcode.trim());
   }
 };
 

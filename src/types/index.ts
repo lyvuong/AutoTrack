@@ -6,6 +6,14 @@ export interface UserAuditInfo {
   email?: string;
 }
 
+export interface HouseholdMetadata {
+  code: string;
+  passcode: string;
+  createdBy: UserAuditInfo;
+  createdAt: string;
+  members: UserAuditInfo[];
+}
+
 export interface Vehicle {
   id: string;
   make: string;
