@@ -9,7 +9,6 @@ import {
   LogOut, 
   User,
   Users,
-  Share2,
   Check,
   Key,
   ChevronDown,
@@ -35,7 +34,7 @@ interface SettingsModalProps {
   user: UserProfile | null;
   isFirebaseActive: boolean;
   familyCode: string;
-  onSetFamilyCode: (code: string) => void;
+  onSetFamilyCode: (code: string, passcode?: string) => Promise<{ success: boolean; message: string }>;
   onRefreshData: () => void;
   onClearDemoData?: () => void;
   onRestoreSampleData: () => void;
@@ -51,7 +50,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRestoreSampleData
 }) => {
   const [inputFamilyCode, setInputFamilyCode] = useState(familyCode || '');
+  const [inputPasscode, setInputPasscode] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [householdMessage, setHouseholdMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [isJoiningLoading, setIsJoiningLoading] = useState(false);
+
+  React.useEffect(() => {
+    setInputFamilyCode(familyCode || '');
+    if (!familyCode) {
+      setInputPasscode('');
+    }
+  }, [familyCode]);
   
   // Advanced Firebase Config state
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
@@ -90,6 +99,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       onRefreshData();
     } else {
       setConfigMessage('❌ Connection failed. Please check credentials.');
+    }
+  };
+
+  const handleJoinHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = inputFamilyCode.trim().toUpperCase();
+    const cleanPasscode = inputPasscode.trim();
+
+    if (!cleanCode) {
+      setHouseholdMessage({ text: 'Please enter a Household Code (e.g. VUONG-FAMILY).', type: 'error' });
+      return;
+    }
+    if (!cleanPasscode) {
+      setHouseholdMessage({ text: 'Please set or enter a 4-8 character Household PIN / Passcode.', type: 'error' });
+      return;
+    }
+
+    setIsJoiningLoading(true);
+    setHouseholdMessage(null);
+
+    const res = await onSetFamilyCode(cleanCode, cleanPasscode);
+    setIsJoiningLoading(false);
+
+    if (res.success) {
+      setHouseholdMessage({ text: res.message, type: 'success' });
+      setInputPasscode('');
+    } else {
+      setHouseholdMessage({ text: res.message, type: 'error' });
+    }
+  };
+
+  const handleLeaveHousehold = async () => {
+    if (confirm('Leave shared household garage and return to your personal garage?')) {
+      await onSetFamilyCode('', '');
+      setInputFamilyCode('');
+      setInputPasscode('');
+      setHouseholdMessage({ text: 'Returned to your Personal Garage.', type: 'success' });
     }
   };
 
@@ -219,80 +265,99 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-base font-bold text-white">Shared Family Garage Sync</h2>
+            <h2 className="text-base font-bold text-white">Protected Family Household Sync</h2>
           </div>
           {familyCode ? (
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5" /> Shared Code: {familyCode}
+              <Lock className="w-3.5 h-3.5 text-indigo-400" /> Household: {familyCode}
             </span>
           ) : (
-            <span className="text-xs text-slate-400 font-medium">Personal Garage</span>
+            <span className="text-xs text-slate-400 font-medium">Personal Garage Mode</span>
           )}
         </div>
 
         <p className="text-xs text-slate-300">
-          Share your vehicle list and maintenance logs with your spouse or family members! Anyone using the same <strong>Household Code</strong> will automatically view and edit the same shared garage in real time on their own Google account.
+          Sync vehicles and maintenance logs with your spouse or family! Protect your household with a <strong>Household Code</strong> and a secret <strong>PIN / Passcode</strong>.
         </p>
 
-        <div className="space-y-3 pt-1">
-          <label className="block text-xs font-semibold text-slate-300">
-            Household Sync Code (e.g. VUONG-FAMILY, GARAGE-1234)
-          </label>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <input
-              type="text"
-              placeholder="e.g. VUONG-FAMILY"
-              value={inputFamilyCode}
-              onChange={(e) => setInputFamilyCode(e.target.value.toUpperCase())}
-              className="flex-1 glass-input text-white text-xs rounded-xl p-2.5 font-mono uppercase tracking-wider"
-            />
-            <button
-              onClick={() => {
-                const clean = inputFamilyCode.trim().toUpperCase();
-                if (!clean) {
-                  alert('Please enter a Household Code (e.g. VUONG-FAMILY).');
-                  return;
-                }
-                onSetFamilyCode(clean);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5"
-            >
-              <Share2 className="w-4 h-4" /> Save & Join Household
-            </button>
-            {familyCode && (
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(familyCode);
-                  setCopiedCode(true);
-                  setTimeout(() => setCopiedCode(false), 2000);
-                }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5"
-              >
-                {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4 text-slate-400" />}
-                {copiedCode ? 'Copied!' : 'Copy Code'}
-              </button>
-            )}
+        <form onSubmit={handleJoinHousehold} className="space-y-4 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Household Sync Code (e.g. VUONG-FAMILY)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. VUONG-FAMILY"
+                value={inputFamilyCode}
+                onChange={(e) => setInputFamilyCode(e.target.value.toUpperCase())}
+                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono uppercase tracking-wider"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Household PIN / Passcode (e.g. 1234 or SecretPass)
+              </label>
+              <input
+                type="password"
+                placeholder="Enter or set a 4-8 digit PIN"
+                value={inputPasscode}
+                onChange={(e) => setInputPasscode(e.target.value)}
+                className="w-full glass-input text-white text-xs rounded-xl p-2.5 font-mono"
+              />
+            </div>
           </div>
 
-          {familyCode && (
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-indigo-300 font-medium">
-                ✅ Currently syncing all vehicles under Household: <strong>{familyCode}</strong>
-              </span>
-              <button
-                onClick={() => {
-                  if (confirm('Leave shared household garage and return to your personal garage?')) {
-                    setInputFamilyCode('');
-                    onSetFamilyCode('');
-                  }
-                }}
-                className="text-xs text-red-400 hover:text-red-300 hover:underline"
-              >
-                Leave Household
-              </button>
-            </div>
+          {householdMessage && (
+            <p className={`text-xs font-semibold p-3 rounded-xl border ${
+              householdMessage.type === 'success' 
+                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800' 
+                : 'bg-red-950/60 text-red-300 border-red-800'
+            }`}>
+              {householdMessage.text}
+            </p>
           )}
-        </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={isJoiningLoading}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 transition-all"
+            >
+              {isJoiningLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Lock className="w-4 h-4" />
+              )}
+              {familyCode ? 'Update / Re-Authenticate Household PIN' : 'Authenticate & Join Household'}
+            </button>
+
+            {familyCode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(familyCode);
+                    setCopiedCode(true);
+                    setTimeout(() => setCopiedCode(false), 2000);
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5"
+                >
+                  {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Key className="w-4 h-4 text-slate-400" />}
+                  {copiedCode ? 'Copied!' : 'Copy Code'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLeaveHousehold}
+                  className="text-xs text-red-400 hover:text-red-300 hover:underline px-2 py-1"
+                >
+                  Leave Household
+                </button>
+              </>
+            )}
+          </div>
+        </form>
       </div>
 
       {/* Backup Export / Import Data Panel */}
