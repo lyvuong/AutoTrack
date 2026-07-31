@@ -92,28 +92,35 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // 👑 1. Admin Email Allowed to Create New Households
+    // 👑 1. Admin Email Allowed to Create New Household Codes
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.email == 'yourname@gmail.com' // Replace with Admin Email
       );
     }
 
-    // Personal user data
+    // 👥 2. Check if user has entered & registered for the specific household
+    function isHouseholdMember(householdCode) {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/households/$(householdCode)/metadata/info) &&
+        request.auth.uid in get(/databases/$(database)/documents/households/$(householdCode)/metadata/info).data.memberUids
+      );
+    }
+
+    // 🏠 Personal Garage (Users in Personal Mode only access their own data)
     match /users/{userId}/{document=**} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // 🔒 2. Household Creation Control:
-    // Only Admin can CREATE new household metadata. Logged-in members can READ/UPDATE existing households.
+    // 🔒 Household Creation & Registration Metadata
     match /households/{householdCode}/metadata/info {
       allow create: if isAdmin();
       allow read, update: if isAuthenticated();
     }
 
-    // Shared vehicles, records, reminders inside valid households
+    // 🛡️ Household Vehicles & Service Logs: Restricted ONLY to registered household members!
     match /households/{householdCode}/{subcollection}/{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if isHouseholdMember(householdCode);
     }
   }
 }
