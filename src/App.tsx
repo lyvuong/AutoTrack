@@ -107,7 +107,7 @@ export const App: React.FC = () => {
   // Online / Offline Detection
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOffline(false);
+    const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -154,10 +154,10 @@ export const App: React.FC = () => {
               saveLocalVehicles([]);
             } else {
               hasSeededVehicles = true;
-              const local = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
+              const local = loadLocalVehicles().filter((v: Vehicle) => !v.id.startsWith('demo-'));
               if (local.length > 0) {
                 setVehicles(local);
-                local.forEach(v => {
+                local.forEach((v: Vehicle) => {
                   saveFirestoreVehicle(userProfile.uid, v, familyCode);
                   saveRTDBVehicle(userProfile.uid, v, familyCode);
                 });
@@ -189,10 +189,10 @@ export const App: React.FC = () => {
               saveLocalRecords([]);
             } else {
               hasSeededRecords = true;
-              const local = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
+              const local = loadLocalRecords().filter((r: ServiceRecord) => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
                 setRecords(local);
-                local.forEach(r => {
+                local.forEach((r: ServiceRecord) => {
                   saveFirestoreRecord(userProfile.uid, r, familyCode);
                   saveRTDBRecord(userProfile.uid, r, familyCode);
                 });
@@ -224,10 +224,10 @@ export const App: React.FC = () => {
               saveLocalReminders([]);
             } else {
               hasSeededReminders = true;
-              const local = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
+              const local = loadLocalReminders().filter((rem: ServiceReminder) => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
               if (local.length > 0) {
                 setReminders(local);
-                local.forEach(rem => {
+                local.forEach((rem: ServiceReminder) => {
                   saveFirestoreReminder(userProfile.uid, rem, familyCode);
                   saveRTDBReminder(userProfile.uid, rem, familyCode);
                 });
