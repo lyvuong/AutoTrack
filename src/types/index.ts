@@ -71,10 +71,10 @@ export interface ServiceReminder {
   vehicleId: string;
   title: string;
   category: ServiceCategory;
-  dueMileage?: number;
   dueDate?: string;
-  intervalMiles?: number;
+  dueMileage?: number;
   intervalMonths?: number;
+  intervalMiles?: number;
   isCompleted: boolean;
   notes?: string;
   createdBy?: UserAuditInfo;
@@ -99,4 +99,4 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
-export type ActiveTab = 'dashboard' | 'vehicles' | 'history' | 'reminders' | 'analytics' | 'settings';
+export type ActiveTab = 'dashboard' | 'vehicles' | 'history' | 'reminders' | 'analytics' | 'settings' | 'about';

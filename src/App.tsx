@@ -7,6 +7,7 @@ import { ServiceHistory } from './components/Services/ServiceHistory';
 import { CostAnalytics } from './components/Analytics/CostAnalytics';
 import { ReminderManager } from './components/Reminders/ReminderManager';
 import { SettingsModal } from './components/Settings/SettingsModal';
+import { AboutPage } from './components/About/AboutPage';
 import { ServiceFormModal } from './components/Services/ServiceFormModal';
 import { VehicleModal } from './components/Vehicles/VehicleModal';
 import { ReminderModal } from './components/Reminders/ReminderModal';
@@ -547,6 +548,7 @@ export const App: React.FC = () => {
           setIsVehicleModalOpen(true);
         }}
         onOpenSettings={() => setActiveTab('settings')}
+        onOpenAbout={() => setActiveTab('about')}
         isOnline={isOnline}
         isFirebaseActive={isFirebaseActive}
         user={user}
@@ -635,6 +637,12 @@ export const App: React.FC = () => {
             onRefreshData={handleRefreshData}
             onClearDemoData={handleClearDemoData}
             onRestoreSampleData={handleRestoreSampleData}
+          />
+        )}
+
+        {activeTab === 'about' && (
+          <AboutPage 
+            onOpenSettings={() => setActiveTab('settings')}
           />
         )}
 
