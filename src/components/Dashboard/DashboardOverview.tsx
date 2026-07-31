@@ -37,42 +37,41 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onUpdateMileage
 }) => {
   const [isEditingMileage, setIsEditingMileage] = useState(false);
-  const [mileageInput, setMileageInput] = useState(activeVehicle?.currentMileage.toString() || '');
+  const [mileageInput, setMileageInput] = useState(activeVehicle?.currentMileage?.toString() || '');
 
   if (!activeVehicle) {
     return (
-      <div className="glass-panel p-8 sm:p-12 rounded-3xl text-center max-w-lg mx-auto space-y-6 my-12">
-        <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-cyan-400 shadow-xl shadow-cyan-500/10">
-          <Car className="w-10 h-10" />
+      <div className="text-center py-16 px-4 bg-slate-900/60 rounded-3xl border border-slate-800 my-8">
+        <div className="w-16 h-16 bg-cyan-500/10 text-cyan-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
+          <Car className="w-8 h-8" />
         </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black text-white font-display">No Vehicle Selected</h2>
-          <p className="text-sm text-slate-400 leading-relaxed">
-            Get started by adding your first car, truck, or motorcycle to your garage!
-          </p>
-        </div>
+        <h2 className="text-xl font-bold text-white mb-2">No Vehicle Selected</h2>
+        <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
+          Add your first vehicle profile to start tracking service logs, repair costs, and maintenance reminders.
+        </p>
         <button
           onClick={onOpenAddVehicle}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-xl shadow-cyan-500/25 transition-all"
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
         >
-          <PlusCircle className="w-5 h-5" />
-          Add Your First Vehicle
+          + Add First Vehicle
         </button>
       </div>
     );
   }
 
+  // Calculate metrics for active vehicle
   const vehicleRecords = records.filter(r => r.vehicleId === activeVehicle.id);
-  const vehicleReminders = reminders.filter(r => r.vehicleId === activeVehicle.id);
-  
-  const pendingReminders = vehicleReminders.filter(r => !r.isCompleted);
-  const overdueReminders = pendingReminders.filter(r => {
+  const totalSpent = vehicleRecords.reduce((sum, r) => sum + r.cost, 0);
+  const totalMilesDriven = Math.max(1, activeVehicle.currentMileage - activeVehicle.startingMileage);
+  const costPerMile = totalSpent > 0 ? (totalSpent / totalMilesDriven).toFixed(3) : '0.000';
+
+  const vehicleReminders = reminders.filter(r => r.vehicleId === activeVehicle.id && !r.isCompleted);
+  const overdueReminders = vehicleReminders.filter(r => {
     if (r.dueMileage && activeVehicle.currentMileage >= r.dueMileage) return true;
     if (r.dueDate && new Date(r.dueDate) <= new Date()) return true;
     return false;
   });
 
-  const totalSpent = vehicleRecords.reduce((acc, r) => acc + (r.cost || 0), 0);
   const recentRecords = [...vehicleRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4);
 
   const handleMileageSubmit = (e: React.FormEvent) => {
@@ -89,231 +88,298 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       
       {/* Active Vehicle Hero Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-cyan-950/40 border border-slate-800 p-6 sm:p-8 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-extrabold text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-800/80 tracking-wider">
-                {activeVehicle.year} • {activeVehicle.fuelType}
-              </span>
-              {activeVehicle.licensePlate && (
-                <span className="text-xs font-mono text-slate-300 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700">
-                  <Tag className="w-3 h-3 inline mr-1 text-slate-400" />
-                  {activeVehicle.licensePlate}
+          <div className="flex items-center gap-5">
+            {activeVehicle.photoUrl ? (
+              <img
+                src={activeVehicle.photoUrl}
+                alt={`${activeVehicle.make} ${activeVehicle.model}`}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-cyan-500/40 shadow-lg"
+              />
+            ) : (
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center shadow-lg border border-white/10">
+                <Car className="w-10 h-10 text-white" />
+              </div>
+            )}
+
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  {activeVehicle.fuelType}
                 </span>
+                {activeVehicle.licensePlate && (
+                  <span className="bg-slate-800 text-slate-300 border border-slate-700 text-xs font-mono px-2 py-0.5 rounded-md uppercase font-semibold">
+                    {activeVehicle.licensePlate}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                {activeVehicle.year} {activeVehicle.make} {activeVehicle.model}
+              </h1>
+              {activeVehicle.vin && (
+                <p className="text-xs text-slate-400 font-mono mt-1">
+                  VIN: {activeVehicle.vin}
+                </p>
               )}
             </div>
+          </div>
 
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight font-display">
-              {activeVehicle.make} <span className="text-cyan-400">{activeVehicle.model}</span>
-            </h1>
+          {/* Odometer Mileage Display & Quick Editor */}
+          <div className="bg-slate-850/90 border border-slate-750 p-4 rounded-2xl flex flex-col justify-center min-w-[220px] shadow-inner">
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-400 font-medium mb-1">
+              <span className="flex items-center gap-1">
+                <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                Current Odometer
+              </span>
+              <button
+                onClick={() => {
+                  setMileageInput(activeVehicle.currentMileage.toString());
+                  setIsEditingMileage(!isEditingMileage);
+                }}
+                className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px] font-semibold"
+              >
+                <Edit3 className="w-3 h-3" />
+                {isEditingMileage ? 'Cancel' : 'Update'}
+              </button>
+            </div>
 
-            {activeVehicle.vin && (
-              <p className="text-xs text-slate-400 font-mono">
-                VIN: {activeVehicle.vin}
-              </p>
+            {isEditingMileage ? (
+              <form onSubmit={handleMileageSubmit} className="flex gap-2 mt-1">
+                <input
+                  type="number"
+                  value={mileageInput}
+                  onChange={(e) => setMileageInput(e.target.value)}
+                  className="w-full bg-slate-900 border border-cyan-500 text-white text-sm rounded-lg px-2.5 py-1 focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold px-3 py-1 rounded-lg"
+                >
+                  Save
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-mono font-extrabold text-white tracking-wider">
+                  {activeVehicle.currentMileage.toLocaleString()}
+                </span>
+                <span className="text-xs text-slate-400 font-semibold">mi</span>
+              </div>
             )}
           </div>
 
-          {/* Odometer Mileage Display */}
-          <div className="bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800/80 flex items-center gap-4 min-w-[240px]">
-            <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
-              <Gauge className="w-7 h-7" />
-            </div>
-
-            <div className="flex-1">
-              <span className="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Odometer</span>
-              {isEditingMileage ? (
-                <form onSubmit={handleMileageSubmit} className="flex items-center gap-2 mt-1">
-                  <input
-                    type="number"
-                    value={mileageInput}
-                    onChange={(e) => setMileageInput(e.target.value)}
-                    className="w-28 bg-slate-900 border border-cyan-500 text-white font-mono text-sm px-2 py-1 rounded-lg focus:outline-none"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-2.5 py-1 rounded-lg"
-                  >
-                    Save
-                  </button>
-                </form>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-xl sm:text-2xl font-black text-white font-mono">
-                    {activeVehicle.currentMileage.toLocaleString()}
-                    <span className="text-xs text-slate-400 ml-1 font-sans font-medium">mi</span>
-                  </span>
-                  <button
-                    onClick={() => {
-                      setMileageInput(activeVehicle.currentMileage.toString());
-                      setIsEditingMileage(true);
-                    }}
-                    className="text-slate-400 hover:text-cyan-400 p-1"
-                    title="Update current odometer reading"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* Overdue Maintenance Banner Alert */}
+      {overdueReminders.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-950/80 via-red-950/60 to-amber-950/80 border border-amber-500/40 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-lg animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/20 rounded-xl text-amber-400 border border-amber-500/30">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-200">
+                {overdueReminders.length} Maintenance Service{overdueReminders.length > 1 ? 's' : ''} Due or Overdue!
+              </h3>
+              <p className="text-xs text-amber-300/80">
+                {overdueReminders.map(r => r.title).join(', ')} require attention.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onSelectTab('reminders')}
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-2 rounded-xl whitespace-nowrap shadow transition-all"
+          >
+            View Reminders
+          </button>
+        </div>
+      )}
+
+      {/* Metrics Grid Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Total Cost Spent */}
-        <div 
-          onClick={() => onSelectTab('analytics')}
-          className="glass-panel p-5 rounded-2xl cursor-pointer hover:border-cyan-500/40 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Total Spent</span>
-            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 group-hover:scale-110 transition-transform">
+        {/* Total Cost Spent Card */}
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-cyan-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Service Cost</span>
+            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-white mt-2 font-mono">
-            ${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            ${totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
+            Across {vehicleRecords.length} logged services
           </p>
-          <span className="text-[11px] text-emerald-400 font-medium mt-1 inline-flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" /> {vehicleRecords.length} maintenance logs
-          </span>
         </div>
 
-        {/* Total Maintenance Logs */}
-        <div 
-          onClick={() => onSelectTab('history')}
-          className="glass-panel p-5 rounded-2xl cursor-pointer hover:border-cyan-500/40 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Service Logs</span>
-            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20 group-hover:scale-110 transition-transform">
+        {/* Cost Per Mile Card */}
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Cost / Mile</span>
+            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+              <Gauge className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            ${costPerMile}
+            <span className="text-xs text-slate-400 font-normal ml-1">/mi</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Calculated over {totalMilesDriven.toLocaleString()} miles driven
+          </p>
+        </div>
+
+        {/* Service Logs Count Card */}
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Service History</span>
+            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
               <Wrench className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-white mt-2 font-mono">
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             {vehicleRecords.length}
-          </p>
-          <span className="text-[11px] text-cyan-400 font-medium mt-1 inline-flex items-center gap-1">
-            <ChevronRight className="w-3 h-3" /> View full history
-          </span>
-        </div>
-
-        {/* Due Reminders */}
-        <div 
-          onClick={() => onSelectTab('reminders')}
-          className="glass-panel p-5 rounded-2xl cursor-pointer hover:border-amber-500/40 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Pending Reminders</span>
-            <div className={`p-2 rounded-xl border transition-transform group-hover:scale-110 ${
-              overdueReminders.length > 0
-                ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-            }`}>
-              <AlertTriangle className="w-5 h-5" />
-            </div>
+            <span className="text-xs text-slate-400 font-normal ml-1">records</span>
           </div>
-          <p className="text-2xl font-extrabold text-white mt-2 font-mono">
-            {pendingReminders.length}
-          </p>
-          <span className={`text-[11px] font-medium mt-1 inline-flex items-center gap-1 ${
-            overdueReminders.length > 0 ? 'text-red-400' : 'text-amber-400'
-          }`}>
-            {overdueReminders.length > 0 ? `${overdueReminders.length} Overdue!` : 'All services on schedule'}
-          </span>
-        </div>
-
-        {/* Vehicle Health Status */}
-        <div className="glass-panel p-5 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Vehicle Status</span>
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-lg font-bold text-emerald-400 mt-2">
-            Ready to Drive
-          </p>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Last active {activeVehicle.updatedAt ? new Date(activeVehicle.updatedAt).toLocaleDateString() : 'Today'}
-          </span>
-        </div>
-
-      </div>
-
-      {/* Action Buttons Bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={onOpenAddService}
-          className="flex-1 min-w-[200px] flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm py-3 px-4 rounded-2xl shadow-xl shadow-cyan-500/20 active:scale-95 transition-all"
-        >
-          <PlusCircle className="w-5 h-5" />
-          Log Maintenance Record
-        </button>
-
-        <button
-          onClick={onOpenAddReminder}
-          className="flex-1 min-w-[200px] flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm py-3 px-4 rounded-2xl border border-slate-700 transition-all"
-        >
-          <Calendar className="w-5 h-5 text-amber-400" />
-          Set Service Reminder
-        </button>
-      </div>
-
-      {/* Recent Activity Table */}
-      <div className="glass-panel p-6 rounded-3xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-cyan-400" />
-            Recent Service History for {activeVehicle.make} {activeVehicle.model}
-          </h3>
           <button
             onClick={() => onSelectTab('history')}
-            className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1"
+            className="text-xs text-cyan-400 hover:text-cyan-300 font-medium mt-1 flex items-center gap-0.5"
           >
-            View All ({vehicleRecords.length}) <ChevronRight className="w-4 h-4" />
+            View history timeline <ChevronRight className="w-3 h-3" />
           </button>
         </div>
 
-        {recentRecords.length > 0 ? (
-          <div className="space-y-3">
-            {recentRecords.map(r => (
-              <div 
-                key={r.id}
-                className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-colors"
+        {/* Reminders Count Card */}
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-amber-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pending Tasks</span>
+            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            {vehicleReminders.length}
+            <span className="text-xs text-slate-400 font-normal ml-1">reminders</span>
+          </div>
+          <button
+            onClick={() => onSelectTab('reminders')}
+            className="text-xs text-amber-400 hover:text-amber-300 font-medium mt-1 flex items-center gap-0.5"
+          >
+            Manage maintenance schedule <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+      </div>
+
+      {/* Quick Actions Panel */}
+      <div className="glass-panel p-5 rounded-2xl">
+        <h2 className="text-xs uppercase tracking-wider font-extrabold text-slate-400 mb-3">
+          Quick Actions
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button
+            onClick={onOpenAddService}
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Log New Service
+          </button>
+
+          <button
+            onClick={onOpenAddReminder}
+            className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700/80 text-amber-300 font-bold text-xs sm:text-sm py-3 px-4 rounded-xl border border-slate-700 hover:border-amber-500/40 transition-all"
+          >
+            <Calendar className="w-4 h-4 text-amber-400" />
+            Set Service Alert
+          </button>
+
+          <button
+            onClick={onOpenAddVehicle}
+            className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700/80 text-slate-200 font-bold text-xs sm:text-sm py-3 px-4 rounded-xl border border-slate-700 hover:border-cyan-500/40 transition-all"
+          >
+            <Car className="w-4 h-4 text-cyan-400" />
+            Add New Vehicle
+          </button>
+
+          <button
+            onClick={() => onSelectTab('analytics')}
+            className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700/80 text-indigo-300 font-bold text-xs sm:text-sm py-3 px-4 rounded-xl border border-slate-700 hover:border-indigo-500/40 transition-all"
+          >
+            <TrendingUp className="w-4 h-4 text-indigo-400" />
+            Cost Analytics
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Records Timeline Preview */}
+      <div className="glass-panel p-6 rounded-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">Recent Service & Repair Logs</h2>
+            <p className="text-xs text-slate-400">Latest maintenance activities for {activeVehicle.make} {activeVehicle.model}</p>
+          </div>
+          <button
+            onClick={() => onSelectTab('history')}
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/60 px-3 py-1.5 rounded-xl transition-all"
+          >
+            View All ({vehicleRecords.length}) <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {recentRecords.length === 0 ? (
+          <div className="text-center py-10 text-slate-400 text-sm">
+            No service records logged yet for this vehicle.
+            <div className="mt-3">
+              <button
+                onClick={onOpenAddService}
+                className="text-cyan-400 underline font-semibold text-xs"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20 flex-shrink-0">
-                    <Wrench className="w-5 h-5" />
+                Log your first service now
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-800/80">
+            {recentRecords.map((record) => (
+              <div key={record.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group hover:bg-slate-800/30 px-2 rounded-xl transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-cyan-400 group-hover:border-cyan-500/40 transition-all">
+                    <Tag className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-sm text-white block">{r.category}</span>
-                    <span className="text-xs text-slate-400">
-                      {r.date} • {r.mileage.toLocaleString()} mi • {r.provider || 'DIY'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-100">{record.category}</span>
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
+                        record.type === 'Repair' ? 'bg-red-950 text-red-400 border border-red-800/60' :
+                        record.type === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60' :
+                        record.type === 'Upgrade' ? 'bg-purple-950 text-purple-400 border border-purple-800/60' :
+                        'bg-slate-800 text-slate-300'
+                      }`}>
+                        {record.type}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {record.provider || 'Self / DIY'} • {record.mileage.toLocaleString()} mi
+                    </p>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="font-mono font-bold text-sm text-white block">
-                    ${r.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-[10px] uppercase font-extrabold text-cyan-400 px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800">
-                    {r.type}
+                <div className="flex items-center justify-between sm:justify-end gap-4">
+                  <span className="text-xs text-slate-400 font-mono">{record.date}</span>
+                  <span className="text-base font-extrabold text-white font-mono bg-slate-850 px-2.5 py-1 rounded-lg border border-slate-700">
+                    ${record.cost.toFixed(2)}
                   </span>
                 </div>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-slate-500 text-sm">
-            No service records logged for this vehicle yet.
           </div>
         )}
       </div>
