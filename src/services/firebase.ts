@@ -99,6 +99,8 @@ export const subscribeAuth = (callback: (user: UserProfile | null) => void) => {
 
 export const loginWithGoogle = async (): Promise<UserProfile | null> => {
   if (!auth) throw new Error('Firebase Auth is not configured.');
+  setStoredFamilyCode('');
+  setStoredFamilyPasscode('');
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({
     prompt: 'select_account'
@@ -498,6 +500,12 @@ export const verifyOrCreateHousehold = async (
     }
   } catch (err: any) {
     console.error('[Firestore] Error verifying household passcode:', err);
+    if (err.code === 'permission-denied' || err.message?.includes('permission-denied') || err.message?.includes('insufficient permissions')) {
+      return { 
+        success: false, 
+        message: '❌ Creation of new Household Codes is restricted to System Administrators. Please ask your Admin for an existing Household Code and PIN.' 
+      };
+    }
     return { success: false, message: err.message || 'Error verifying Household Code.' };
   }
 };

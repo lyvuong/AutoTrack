@@ -87,9 +87,33 @@ AutoTrack works out of the box in **Local Storage / Demo Mode**. To enable **Goo
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read & write shared vehicle data
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 👑 1. Admin Email Allowed to Create New Households
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'yourname@gmail.com' // Replace with Admin Email
+      );
+    }
+
+    // Personal user data
+    match /users/{userId}/{document=**} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 🔒 2. Household Creation Control:
+    // Only Admin can CREATE new household metadata. Logged-in members can READ/UPDATE existing households.
+    match /households/{householdCode}/metadata/info {
+      allow create: if isAdmin();
+      allow read, update: if isAuthenticated();
+    }
+
+    // Shared vehicles, records, reminders inside valid households
+    match /households/{householdCode}/{subcollection}/{document=**} {
+      allow read, write: if isAuthenticated();
     }
   }
 }
