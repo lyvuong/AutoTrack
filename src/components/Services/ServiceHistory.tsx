@@ -176,6 +176,19 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
             ))}
           </select>
 
+          {/* Filter Service Type */}
+          <select
+            value={selectedTypeFilter}
+            onChange={(e) => setSelectedTypeFilter(e.target.value)}
+            className="bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+          >
+            <option value="all">🔧 All Service Types</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Repair">Repair</option>
+            <option value="Upgrade">Upgrade</option>
+            <option value="Inspection">Inspection</option>
+          </select>
+
           {/* Sort By */}
           <select
             value={sortBy}

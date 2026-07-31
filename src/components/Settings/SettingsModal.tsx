@@ -7,7 +7,6 @@ import {
   Upload, 
   RefreshCw, 
   Trash2, 
-  CheckCircle2, 
   LogOut,
   ChevronDown,
   ChevronUp,
@@ -150,7 +149,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ? 'bg-emerald-950 text-emerald-300 border-emerald-800' 
               : 'bg-amber-950 text-amber-300 border-amber-800'
           }`}>
-            {user ? 'Authenticated' : 'Offline / Signed Out'}
+            {user ? (isFirebaseActive ? 'Authenticated (Firebase Sync Active)' : 'Authenticated') : 'Offline / Signed Out'}
           </span>
         </div>
 
