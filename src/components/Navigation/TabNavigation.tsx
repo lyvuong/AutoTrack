@@ -4,15 +4,25 @@ import type { ActiveTab } from '../../types';
 
 interface TabNavigationProps {
   activeTab: ActiveTab;
-  setActiveTab: (tab: ActiveTab) => void;
-  pendingRemindersCount: number;
+  setActiveTab?: (tab: ActiveTab) => void;
+  onTabChange?: (tab: ActiveTab) => void;
+  pendingRemindersCount?: number;
+  unreadRemindersCount?: number;
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({
   activeTab,
   setActiveTab,
-  pendingRemindersCount
+  onTabChange,
+  pendingRemindersCount,
+  unreadRemindersCount
 }) => {
+  const handleTabSelect = (tab: ActiveTab) => {
+    if (setActiveTab) setActiveTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
+
+  const badgeCount = unreadRemindersCount ?? pendingRemindersCount ?? 0;
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'vehicles', label: 'Garage', icon: Car },
@@ -21,7 +31,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
       id: 'reminders', 
       label: 'Reminders', 
       icon: Bell, 
-      badge: pendingRemindersCount > 0 ? pendingRemindersCount : undefined 
+      badge: badgeCount > 0 ? badgeCount : undefined 
     },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -38,22 +48,19 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as ActiveTab)}
+                onClick={() => handleTabSelect(tab.id as ActiveTab)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap relative ${
                   isActive
                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-inner'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
-                  <span className="ml-1 bg-amber-500 text-slate-950 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">
+                  <span className="ml-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-cyan-500 text-slate-950">
                     {tab.badge}
                   </span>
-                )}
-                {isActive && (
-                  <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-gradient-to-r from-cyan-400 to-indigo-500 rounded-full" />
                 )}
               </button>
             );

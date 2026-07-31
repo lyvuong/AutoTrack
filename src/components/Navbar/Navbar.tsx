@@ -6,12 +6,13 @@ interface NavbarProps {
   vehicles: Vehicle[];
   activeVehicleId: string;
   onSelectVehicle: (id: string) => void;
-  onOpenAddService: () => void;
+  onOpenAddService?: () => void;
   onOpenAddVehicle: () => void;
   onOpenSettings: () => void;
   user: UserProfile | null;
   isOnline: boolean;
   isFirebaseActive: boolean;
+  familyCode?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({

@@ -1,28 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Car as CarIcon, 
-  Wrench, 
-  Bell, 
-  BarChart2, 
-  Settings as SettingsIcon, 
-  Wifi, 
-  WifiOff, 
-  Cloud,
-  CheckCircle,
-  AlertTriangle,
-  User,
-  Users
-} from 'lucide-react';
+import { Navbar } from './components/Navbar/Navbar';
+import { TabNavigation } from './components/Navigation/TabNavigation';
+import { DashboardOverview } from './components/Dashboard/DashboardOverview';
+import { VehicleGarage } from './components/Vehicles/VehicleGarage';
+import { ServiceHistory } from './components/Services/ServiceHistory';
+import { CostAnalytics } from './components/Analytics/CostAnalytics';
+import { ReminderManager } from './components/Reminders/ReminderManager';
+import { SettingsModal } from './components/Settings/SettingsModal';
+import { ServiceFormModal } from './components/Services/ServiceFormModal';
+import { VehicleModal } from './components/Vehicles/VehicleModal';
+import { ReminderModal } from './components/Reminders/ReminderModal';
+import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
+import { LoginScreen } from './components/Auth/LoginScreen';
 
-import type { 
-  Vehicle, 
-  ServiceRecord, 
-  ServiceReminder, 
-  ActiveTab,
-  UserProfile 
-} from './types';
-
+import type { Vehicle, ServiceRecord, ServiceReminder, UserProfile, ActiveTab } from './types';
 import { 
   loadLocalVehicles, 
   saveLocalVehicles, 
@@ -30,7 +21,7 @@ import {
   saveLocalRecords, 
   loadLocalReminders, 
   saveLocalReminders, 
-  clearLocalDemoData, 
+  clearDemoData,
   restoreSampleData,
   getActiveVehicleId, 
   setActiveVehicleId,
@@ -40,54 +31,40 @@ import {
 
 import { 
   initializeFirebaseService, 
-  isFirebaseConfigured,
+  isFirebaseConfigured, 
   subscribeAuth, 
-  tryAutoSignInGoogle,
   loginWithGoogle,
-  logoutFirebase,
-  subscribeFirestoreVehicles,
-  saveFirestoreVehicle,
-  deleteFirestoreVehicle,
-  subscribeFirestoreRecords,
-  saveFirestoreRecord,
-  deleteFirestoreRecord,
+  tryAutoSignInGoogle,
+  subscribeFirestoreVehicles, 
+  subscribeFirestoreRecords, 
   subscribeFirestoreReminders,
+  saveFirestoreVehicle, 
+  deleteFirestoreVehicle, 
+  saveFirestoreRecord, 
+  deleteFirestoreRecord,
   saveFirestoreReminder,
   deleteFirestoreReminder,
+  verifyOrCreateHousehold,
   subscribeRTDBVehicles,
-  saveRTDBVehicle,
-  deleteRTDBVehicle,
   subscribeRTDBRecords,
-  saveRTDBRecord,
-  deleteRTDBRecord,
   subscribeRTDBReminders,
+  saveRTDBVehicle, 
+  deleteRTDBVehicle, 
+  saveRTDBRecord, 
+  deleteRTDBRecord,
   saveRTDBReminder,
-  deleteRTDBReminder,
-  verifyOrCreateHousehold
+  deleteRTDBReminder
 } from './services/firebase';
 
-// Components
-import { Header } from './components/Header';
-import { Navigation } from './components/Navigation';
-import { DashboardView } from './components/Dashboard/DashboardView';
-import { VehicleGarage } from './components/Vehicles/VehicleGarage';
-import { ServiceHistoryView } from './components/Service/ServiceHistoryView';
-import { RemindersView } from './components/Reminders/RemindersView';
-import { AnalyticsView } from './components/Analytics/AnalyticsView';
-import { SettingsModal } from './components/Settings/SettingsModal';
-import { AddVehicleModal } from './components/Vehicles/AddVehicleModal';
-import { AddServiceModal } from './components/Service/AddServiceModal';
-import { AddReminderModal } from './components/Reminders/AddReminderModal';
-import { LoginScreen } from './components/Auth/LoginScreen';
-
-export function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
+export const App: React.FC = () => {
+  // State Initialization
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => loadLocalVehicles());
   const [records, setRecords] = useState<ServiceRecord[]>(() => loadLocalRecords());
   const [reminders, setReminders] = useState<ServiceReminder[]>(() => loadLocalReminders());
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => getActiveVehicleId());
-  
+  const [activeVehicleId, setActiveVehicleIdState] = useState<string>(() => getActiveVehicleId());
+  const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
@@ -123,14 +100,14 @@ export function App() {
   const [editingRecord, setEditingRecord] = useState<ServiceRecord | null>(null);
   
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<ServiceReminder | null>(null);
 
   // Online / Offline Detection
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => setIsOffline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -140,6 +117,12 @@ export function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Sync activeVehicleId to storage
+  const handleSelectVehicle = (id: string) => {
+    setActiveVehicleIdState(id);
+    setActiveVehicleId(id);
+  };
 
   // Initialize Firebase service if configured
   useEffect(() => {
@@ -275,7 +258,6 @@ export function App() {
             unSubRemindersRTDB();
           };
         } else {
-          // Attempt automatic Google sign-in if previous user session exists
           tryAutoSignInGoogle().catch(() => {});
           setStoredFamilyCode('');
           setFamilyCodeState('');
@@ -286,7 +268,7 @@ export function App() {
     }
   }, [familyCode]);
 
-  // Always persist Local Storage changes for instant offline availability & fallback
+  // Persist to local storage
   useEffect(() => {
     saveLocalVehicles(vehicles);
   }, [vehicles]);
@@ -299,30 +281,21 @@ export function App() {
     saveLocalReminders(reminders);
   }, [reminders]);
 
-  useEffect(() => {
-    if (selectedVehicleId) {
-      setActiveVehicleId(selectedVehicleId);
-    }
-  }, [selectedVehicleId]);
-
   // Handle vehicle selection safely
   useEffect(() => {
     if (vehicles.length > 0) {
-      const exists = vehicles.some(v => v.id === selectedVehicleId);
-      if (!exists || !selectedVehicleId) {
-        setSelectedVehicleId(vehicles[0].id);
+      const exists = vehicles.some(v => v.id === activeVehicleId);
+      if (!exists || !activeVehicleId) {
+        handleSelectVehicle(vehicles[0].id);
       }
-    } else {
-      setSelectedVehicleId(null);
     }
-  }, [vehicles, selectedVehicleId]);
+  }, [vehicles, activeVehicleId]);
 
-  const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId) || null;
+  const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || null;
 
   // Handlers for Vehicles
-  const handleSaveVehicle = (vehicleData: Partial<Vehicle>) => {
-    const isEdit = !!editingVehicle;
-    const vehicleId = editingVehicle ? editingVehicle.id : `v-${Date.now()}`;
+  const handleSaveVehicle = (vehicleData: Omit<Vehicle, 'createdAt' | 'updatedAt'>) => {
+    const isEdit = vehicles.some(v => v.id === vehicleData.id);
     const timestamp = new Date().toISOString();
 
     const auditInfo = user ? {
@@ -331,35 +304,26 @@ export function App() {
       email: user.email || undefined
     } : undefined;
 
+    const existing = vehicles.find(v => v.id === vehicleData.id);
+
     const newVehicle: Vehicle = {
-      id: vehicleId,
-      make: vehicleData.make || 'Toyota',
-      model: vehicleData.model || 'Camry',
-      year: vehicleData.year || new Date().getFullYear(),
-      vin: vehicleData.vin || '',
-      licensePlate: vehicleData.licensePlate || '',
-      startingMileage: vehicleData.startingMileage || 0,
-      currentMileage: vehicleData.currentMileage || 0,
-      fuelType: vehicleData.fuelType || 'Gasoline',
-      photoUrl: vehicleData.photoUrl || '',
-      notes: vehicleData.notes || '',
-      createdAt: isEdit ? editingVehicle.createdAt : timestamp,
+      ...vehicleData,
+      createdAt: isEdit && existing ? existing.createdAt : timestamp,
       updatedAt: timestamp,
-      createdBy: isEdit ? (editingVehicle.createdBy || auditInfo) : auditInfo,
+      createdBy: isEdit && existing ? (existing.createdBy || auditInfo) : auditInfo,
       lastEditedBy: auditInfo
     };
 
     setVehicles(prev => {
-      const exists = prev.some(v => v.id === vehicleId);
+      const exists = prev.some(v => v.id === newVehicle.id);
       if (exists) {
-        return prev.map(v => v.id === vehicleId ? newVehicle : v);
+        return prev.map(v => v.id === newVehicle.id ? newVehicle : v);
       }
       return [newVehicle, ...prev];
     });
 
-    setSelectedVehicleId(vehicleId);
+    handleSelectVehicle(newVehicle.id);
     setIsVehicleModalOpen(false);
-    setEditingVehicle(null);
 
     // Sync to Cloud
     if (user && isFirebaseActive) {
@@ -374,9 +338,11 @@ export function App() {
     setRecords(prev => prev.filter(r => r.vehicleId !== id));
     setReminders(prev => prev.filter(rem => rem.vehicleId !== id));
 
-    if (selectedVehicleId === id) {
+    if (activeVehicleId === id) {
       const remaining = vehicles.filter(v => v.id !== id);
-      setSelectedVehicleId(remaining.length > 0 ? remaining[0].id : null);
+      if (remaining.length > 0) {
+        handleSelectVehicle(remaining[0].id);
+      }
     }
 
     if (user && isFirebaseActive) {
@@ -387,7 +353,7 @@ export function App() {
 
   // Handlers for Service Records
   const handleSaveRecord = (recordData: Partial<ServiceRecord>) => {
-    if (!selectedVehicleId) return;
+    if (!activeVehicleId) return;
 
     const isEdit = !!editingRecord;
     const recordId = editingRecord ? editingRecord.id : `rec-${Date.now()}`;
@@ -401,7 +367,7 @@ export function App() {
 
     const newRecord: ServiceRecord = {
       id: recordId,
-      vehicleId: selectedVehicleId,
+      vehicleId: activeVehicleId,
       date: recordData.date || new Date().toISOString().split('T')[0],
       mileage: Number(recordData.mileage) || 0,
       cost: Number(recordData.cost) || 0,
@@ -424,15 +390,14 @@ export function App() {
       return [newRecord, ...prev];
     });
 
-    // Automatically update vehicle's current mileage if record mileage is higher
-    if (selectedVehicle && newRecord.mileage > selectedVehicle.currentMileage) {
+    if (activeVehicle && newRecord.mileage > activeVehicle.currentMileage) {
       const updatedVeh = { 
-        ...selectedVehicle, 
+        ...activeVehicle, 
         currentMileage: newRecord.mileage, 
         updatedAt: timestamp,
         lastEditedBy: auditInfo
       };
-      setVehicles(prev => prev.map(v => v.id === v.id ? updatedVeh : v));
+      setVehicles(prev => prev.map(v => v.id === activeVehicle.id ? updatedVeh : v));
       if (user && isFirebaseActive) {
         saveFirestoreVehicle(user.uid, updatedVeh, familyCode);
         saveRTDBVehicle(user.uid, updatedVeh, familyCode);
@@ -442,7 +407,6 @@ export function App() {
     setIsServiceModalOpen(false);
     setEditingRecord(null);
 
-    // Sync to Cloud
     if (user && isFirebaseActive) {
       saveFirestoreRecord(user.uid, newRecord, familyCode);
       saveRTDBRecord(user.uid, newRecord, familyCode);
@@ -459,10 +423,8 @@ export function App() {
   };
 
   // Handlers for Service Reminders
-  const handleSaveReminder = (reminderData: Partial<ServiceReminder>) => {
-    if (!selectedVehicleId) return;
-
-    const reminderId = `rem-${Date.now()}`;
+  const handleSaveReminder = (reminderData: ServiceReminder) => {
+    const isEdit = reminders.some(rem => rem.id === reminderData.id);
     const auditInfo = user ? {
       uid: user.uid,
       displayName: user.displayName || 'Car Owner',
@@ -470,22 +432,21 @@ export function App() {
     } : undefined;
 
     const newReminder: ServiceReminder = {
-      id: reminderId,
-      vehicleId: selectedVehicleId,
-      title: reminderData.title || 'Service Reminder',
-      category: reminderData.category || 'Scheduled Maintenance',
-      dueMileage: reminderData.dueMileage ? Number(reminderData.dueMileage) : undefined,
-      dueDate: reminderData.dueDate || undefined,
-      intervalMiles: reminderData.intervalMiles ? Number(reminderData.intervalMiles) : undefined,
-      intervalMonths: reminderData.intervalMonths ? Number(reminderData.intervalMonths) : undefined,
-      isCompleted: false,
-      notes: reminderData.notes || '',
-      createdBy: auditInfo,
+      ...reminderData,
+      createdBy: isEdit ? reminderData.createdBy : auditInfo,
       lastEditedBy: auditInfo
     };
 
-    setReminders(prev => [newReminder, ...prev]);
+    setReminders(prev => {
+      const exists = prev.some(rem => rem.id === newReminder.id);
+      if (exists) {
+        return prev.map(rem => rem.id === newReminder.id ? newReminder : rem);
+      }
+      return [newReminder, ...prev];
+    });
+
     setIsReminderModalOpen(false);
+    setEditingReminder(null);
 
     if (user && isFirebaseActive) {
       saveFirestoreReminder(user.uid, newReminder, familyCode);
@@ -493,28 +454,31 @@ export function App() {
     }
   };
 
-  const handleToggleReminderComplete = (id: string) => {
+  const handleToggleCompleteReminder = (reminder: ServiceReminder) => {
     const auditInfo = user ? {
       uid: user.uid,
       displayName: user.displayName || 'Car Owner',
       email: user.email || undefined
     } : undefined;
 
-    setReminders(prev => prev.map(rem => {
-      if (rem.id === id) {
-        const updated = { 
-          ...rem, 
-          isCompleted: !rem.isCompleted,
-          lastEditedBy: auditInfo 
-        };
-        if (user && isFirebaseActive) {
-          saveFirestoreReminder(user.uid, updated, familyCode);
-          saveRTDBReminder(user.uid, updated, familyCode);
-        }
-        return updated;
-      }
-      return rem;
-    }));
+    const updated = { 
+      ...reminder, 
+      isCompleted: !reminder.isCompleted,
+      lastEditedBy: auditInfo 
+    };
+
+    setReminders(prev => prev.map(rem => rem.id === reminder.id ? updated : rem));
+
+    if (user && isFirebaseActive) {
+      saveFirestoreReminder(user.uid, updated, familyCode);
+      saveRTDBReminder(user.uid, updated, familyCode);
+    }
+  };
+
+  const handleCompleteAndLogService = (reminder: ServiceReminder) => {
+    handleToggleCompleteReminder(reminder);
+    setEditingRecord(null);
+    setIsServiceModalOpen(true);
   };
 
   const handleDeleteReminder = (id: string) => {
@@ -532,11 +496,10 @@ export function App() {
   };
 
   const handleClearDemoData = () => {
-    clearLocalDemoData();
+    clearDemoData();
     setVehicles([]);
     setRecords([]);
     setReminders([]);
-    setSelectedVehicleId(null);
   };
 
   const handleRestoreSampleData = () => {
@@ -546,7 +509,7 @@ export function App() {
     setRecords(loadLocalRecords());
     setReminders(loadLocalReminders());
     if (freshVehicles.length > 0) {
-      setSelectedVehicleId(freshVehicles[0].id);
+      handleSelectVehicle(freshVehicles[0].id);
     }
   };
 
@@ -570,111 +533,73 @@ export function App() {
     );
   }
 
+  const unreadRemindersCount = reminders.filter(rem => !rem.isCompleted).length;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-24 lg:pb-0">
       
       {/* Top Banner Navigation Header */}
-      <Header
+      <Navbar
         vehicles={vehicles}
-        selectedVehicleId={selectedVehicleId}
-        onSelectVehicle={setSelectedVehicleId}
-        onAddVehicle={() => {
-          setEditingVehicle(null);
+        activeVehicleId={activeVehicleId}
+        onSelectVehicle={handleSelectVehicle}
+        onOpenAddVehicle={() => {
           setIsVehicleModalOpen(true);
         }}
-        onAddService={() => {
-          setEditingRecord(null);
-          setIsServiceModalOpen(true);
-        }}
+        onOpenSettings={() => setActiveTab('settings')}
         isOnline={isOnline}
         isFirebaseActive={isFirebaseActive}
         user={user}
         familyCode={familyCode}
-        onOpenSettings={() => setActiveTab('settings')}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
-        {/* Connection & Household Garage Status Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full border ${
-              isOnline 
-                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800' 
-                : 'bg-amber-950/80 text-amber-300 border-amber-800'
-            }`}>
-              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              {isOnline ? 'Online' : 'Offline (Cached)'}
-            </span>
-
-            <span className={`inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full border ${
-              isFirebaseActive 
-                ? 'bg-cyan-950/80 text-cyan-300 border-cyan-800' 
-                : 'bg-slate-800 text-slate-400 border-slate-700'
-            }`}>
-              <Cloud className="w-3.5 h-3.5" />
-              {isFirebaseActive ? 'Cloud Sync Active' : 'Local Demo Mode'}
-            </span>
-
-            {familyCode && (
-              <span className="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800">
-                <Users className="w-3.5 h-3.5" />
-                Shared Household Garage: {familyCode}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 text-slate-400 font-mono text-[11px]">
-            <span>{vehicles.length} Vehicles</span>
-            <span>•</span>
-            <span>{records.length} Service Logs</span>
-            <span>•</span>
-            <span>{reminders.length} Reminders</span>
-          </div>
-        </div>
-
         {/* Tab View Switcher */}
         {activeTab === 'dashboard' && (
-          <DashboardView
-            selectedVehicle={selectedVehicle}
-            vehicles={vehicles}
+          <DashboardOverview
+            activeVehicle={activeVehicle}
             records={records}
             reminders={reminders}
-            onNavigate={(tab) => setActiveTab(tab)}
-            onAddService={() => setIsServiceModalOpen(true)}
-            onAddReminder={() => setIsReminderModalOpen(true)}
+            onOpenAddService={() => {
+              setEditingRecord(null);
+              setIsServiceModalOpen(true);
+            }}
+            onOpenAddVehicle={() => {
+              setIsVehicleModalOpen(true);
+            }}
+            onOpenAddReminder={() => {
+              setEditingReminder(null);
+              setIsReminderModalOpen(true);
+            }}
+            onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles') => setActiveTab(tab)}
           />
         )}
 
         {activeTab === 'vehicles' && (
           <VehicleGarage
             vehicles={vehicles}
-            selectedVehicleId={selectedVehicleId}
-            onSelectVehicle={setSelectedVehicleId}
-            onAddVehicle={() => {
-              setEditingVehicle(null);
-              setIsVehicleModalOpen(true);
-            }}
-            onEditVehicle={(vehicle) => {
-              setEditingVehicle(vehicle);
-              setIsVehicleModalOpen(true);
-            }}
+            activeVehicleId={activeVehicleId}
+            familyCode={familyCode}
+            onSelectVehicle={handleSelectVehicle}
+            onSaveVehicle={handleSaveVehicle}
             onDeleteVehicle={handleDeleteVehicle}
+            onOpenSettings={() => setActiveTab('settings')}
           />
         )}
 
         {activeTab === 'history' && (
-          <ServiceHistoryView
+          <ServiceHistory
             records={records}
-            selectedVehicle={selectedVehicle}
             vehicles={vehicles}
-            onAddRecord={() => {
+            activeVehicleId={activeVehicleId}
+            onOpenAddService={() => {
               setEditingRecord(null);
               setIsServiceModalOpen(true);
             }}
-            onEditRecord={(record) => {
-              setEditingRecord(record);
+            onEditRecord={(rec: ServiceRecord) => {
+              setEditingRecord(rec);
               setIsServiceModalOpen(true);
             }}
             onDeleteRecord={handleDeleteRecord}
@@ -682,21 +607,22 @@ export function App() {
         )}
 
         {activeTab === 'reminders' && (
-          <RemindersView
+          <ReminderManager
             reminders={reminders}
-            selectedVehicle={selectedVehicle}
             vehicles={vehicles}
-            onAddReminder={() => setIsReminderModalOpen(true)}
-            onToggleComplete={handleToggleReminderComplete}
+            activeVehicleId={activeVehicleId}
+            onSaveReminder={handleSaveReminder}
             onDeleteReminder={handleDeleteReminder}
+            onToggleComplete={handleToggleCompleteReminder}
+            onCompleteAndLogService={handleCompleteAndLogService}
           />
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsView
+          <CostAnalytics
             vehicles={vehicles}
+            activeVehicleId={activeVehicleId}
             records={records}
-            selectedVehicleId={selectedVehicleId}
           />
         )}
 
@@ -714,49 +640,48 @@ export function App() {
 
       </main>
 
-      {/* Navigation Bar */}
-      <Navigation
-        activeTab={activeTab}
-        onChangeTab={setActiveTab}
+      {/* Shared Modals */}
+      <ServiceFormModal
+        isOpen={isServiceModalOpen}
+        onClose={() => setIsServiceModalOpen(false)}
+        onSave={handleSaveRecord}
+        vehicles={vehicles}
+        activeVehicleId={activeVehicleId}
+        initialRecord={editingRecord}
       />
 
-      {/* Modals */}
-      {isVehicleModalOpen && (
-        <AddVehicleModal
-          isOpen={isVehicleModalOpen}
-          onClose={() => {
-            setIsVehicleModalOpen(false);
-            setEditingVehicle(null);
-          }}
-          onSave={handleSaveVehicle}
-          initialVehicle={editingVehicle}
-        />
-      )}
+      <VehicleModal
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
+        onSave={handleSaveVehicle}
+      />
 
-      {isServiceModalOpen && selectedVehicle && (
-        <AddServiceModal
-          isOpen={isServiceModalOpen}
-          onClose={() => {
-            setIsServiceModalOpen(false);
-            setEditingRecord(null);
-          }}
-          onSave={handleSaveRecord}
-          selectedVehicle={selectedVehicle}
-          initialRecord={editingRecord}
-        />
-      )}
+      <ReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        onSave={handleSaveReminder}
+        vehicles={vehicles}
+        activeVehicleId={activeVehicleId}
+        initialReminder={editingReminder}
+      />
 
-      {isReminderModalOpen && selectedVehicle && (
-        <AddReminderModal
-          isOpen={isReminderModalOpen}
-          onClose={() => setIsReminderModalOpen(false)}
-          onSave={handleSaveReminder}
-          selectedVehicle={selectedVehicle}
-        />
-      )}
+      {/* Navigation Bar */}
+      <TabNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        unreadRemindersCount={unreadRemindersCount}
+      />
+
+      {/* PWA Home Screen Install Banner */}
+      <PWAInstallPrompt />
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500 no-print">
+        <p>AutoTrack Progressive Web App • Cloudflare Pages Ready • Offline Capable</p>
+      </footer>
 
     </div>
   );
-}
+};
 
 export default App;
