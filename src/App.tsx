@@ -26,7 +26,9 @@ import {
   getActiveVehicleId, 
   setActiveVehicleId,
   getStoredFamilyCode,
-  setStoredFamilyCode
+  setStoredFamilyCode,
+  getStoredFamilyPasscode,
+  setStoredFamilyPasscode
 } from './services/storage';
 
 import { 
@@ -44,12 +46,13 @@ import {
   deleteFirestoreRecord,
   saveFirestoreReminder,
   deleteFirestoreReminder,
+  verifyOrCreateHousehold,
   subscribeRTDBVehicles,
   subscribeRTDBRecords,
   subscribeRTDBReminders,
-  saveRTDBVehicle,
-  deleteRTDBVehicle,
-  saveRTDBRecord,
+  saveRTDBVehicle, 
+  deleteRTDBVehicle, 
+  saveRTDBRecord, 
   deleteRTDBRecord,
   saveRTDBReminder,
   deleteRTDBReminder
@@ -69,9 +72,32 @@ export const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile | null>(null);
 
-  const handleSetFamilyCode = (code: string) => {
-    setStoredFamilyCode(code);
-    setFamilyCodeState(code.toUpperCase().trim());
+  const handleSetFamilyCode = async (code: string, passcode?: string): Promise<{ success: boolean; message: string }> => {
+    const cleanCode = code.toUpperCase().trim();
+    if (!cleanCode) {
+      setStoredFamilyCode('');
+      setStoredFamilyPasscode('');
+      setFamilyCodeState('');
+      return { success: true, message: 'Returned to Personal Garage.' };
+    }
+
+    const cleanPasscode = (passcode || getStoredFamilyPasscode() || '').trim();
+
+    if (user && isFirebaseActive && cleanPasscode) {
+      const res = await verifyOrCreateHousehold(cleanCode, cleanPasscode, user);
+      if (!res.success) {
+        return { success: false, message: res.message };
+      }
+      setStoredFamilyCode(cleanCode);
+      setStoredFamilyPasscode(cleanPasscode);
+      setFamilyCodeState(cleanCode);
+      return { success: true, message: res.message };
+    } else {
+      setStoredFamilyCode(cleanCode);
+      if (cleanPasscode) setStoredFamilyPasscode(cleanPasscode);
+      setFamilyCodeState(cleanCode);
+      return { success: true, message: `Joined Household ${cleanCode}` };
+    }
   };
 
   // Modals state
@@ -85,7 +111,7 @@ export const App: React.FC = () => {
   // Listen to network status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOffline = () => setIsOffline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -232,6 +258,9 @@ export const App: React.FC = () => {
         } else {
           // Attempt automatic Google sign-in if previous user session exists
           tryAutoSignInGoogle().catch(() => {});
+          setStoredFamilyCode('');
+          setStoredFamilyPasscode('');
+          setFamilyCodeState('');
         }
       });
 

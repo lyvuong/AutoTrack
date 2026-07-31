@@ -14,6 +14,7 @@ import {
   getFirestore, 
   collection, 
   doc, 
+  getDoc,
   setDoc, 
   deleteDoc, 
   onSnapshot, 
@@ -23,8 +24,8 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
 import type { Database } from 'firebase/database';
-import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile } from '../types';
-import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode } from './storage';
+import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile, UserAuditInfo } from '../types';
+import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode, setStoredFamilyCode, setStoredFamilyPasscode } from './storage';
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
@@ -151,6 +152,8 @@ export const registerWithEmail = async (email: string, pass: string): Promise<Us
 
 export const logoutFirebase = async (): Promise<void> => {
   localStorage.removeItem('autotrack_auto_signin_google');
+  setStoredFamilyCode('');
+  setStoredFamilyPasscode('');
   if (auth) {
     await firebaseSignOut(auth);
   }
@@ -431,5 +434,70 @@ export const deleteRTDBReminder = async (userId: string, reminderId: string, fam
     await remove(ref(rtdb, `${target.root}/${target.id}/reminders/${reminderId}`));
   } catch (err) {
     console.error('[RTDB] Error deleting reminder:', err);
+  }
+};
+
+export const verifyOrCreateHousehold = async (
+  familyCode: string,
+  passcode: string,
+  userProfile: UserProfile
+): Promise<{ success: boolean; message: string; isNew?: boolean }> => {
+  if (!db) return { success: true, message: 'Offline mode active.' };
+  
+  const code = familyCode.trim().toUpperCase();
+  const cleanPasscode = passcode.trim();
+  if (!code) return { success: false, message: 'Please enter a Household Code.' };
+  if (!cleanPasscode) return { success: false, message: 'Please enter a 4-8 digit Household PIN / Passcode.' };
+
+  try {
+    const metaRef = doc(db, 'households', code, 'metadata', 'info');
+    const docSnap = await getDoc(metaRef);
+
+    const auditUser: UserAuditInfo = {
+      uid: userProfile.uid,
+      displayName: userProfile.displayName || 'User',
+      email: userProfile.email || undefined
+    };
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data.passcode && data.passcode !== cleanPasscode) {
+        return { 
+          success: false, 
+          message: '❌ Incorrect Household PIN / Passcode. Access denied.' 
+        };
+      }
+      
+      // Update members list if needed
+      const members: UserAuditInfo[] = data.members || [];
+      if (!members.some(m => m.uid === userProfile.uid)) {
+        members.push(auditUser);
+        await setDoc(metaRef, { members }, { merge: true });
+      }
+
+      return { 
+        success: true, 
+        isNew: false, 
+        message: `✅ Authenticated & Joined Household ${code}!` 
+      };
+    } else {
+      // Create new Household Metadata
+      const newHousehold = {
+        code,
+        passcode: cleanPasscode,
+        createdBy: auditUser,
+        createdAt: new Date().toISOString(),
+        members: [auditUser]
+      };
+      await setDoc(metaRef, newHousehold);
+      return { 
+        success: true, 
+        isNew: true, 
+        message: `🎉 Created new Household ${code} secured with your PIN!` 
+      };
+    }
+  } catch (err: any) {
+    console.error('[Firestore] Error verifying household passcode:', err);
+    return { success: false, message: err.message || 'Error verifying Household Code.' };
   }
 };
