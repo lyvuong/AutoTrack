@@ -1,7 +1,8 @@
-import type { Vehicle, ServiceRecord, ServiceReminder, FirebaseConfig } from '../types';
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, FirebaseConfig } from '../types';
 
 const VEHICLES_KEY = 'autotrack_vehicles_v1';
 const RECORDS_KEY = 'autotrack_records_v1';
+const TRANSACTIONS_KEY = 'autotrack_transactions_v1';
 const REMINDERS_KEY = 'autotrack_reminders_v1';
 const ACTIVE_VEHICLE_KEY = 'autotrack_active_vehicle_id';
 const FIREBASE_CONFIG_KEY = 'autotrack_firebase_config_custom';
@@ -44,39 +45,64 @@ export const INITIAL_RECORDS: ServiceRecord[] = [
   {
     id: 'rec-1',
     vehicleId: 'demo-v1',
-    date: '2026-06-15',
     mileage: 48000,
     category: 'Oil Change',
     type: 'Maintenance',
-    cost: 75.50,
-    provider: 'Toyota Dealership Service',
-    notes: 'Full synthetic 0W-20 oil change & OEM filter replacement. Tire rotation included.',
     nextServiceMileage: 53000,
     createdAt: new Date().toISOString()
   },
   {
     id: 'rec-2',
     vehicleId: 'demo-v1',
-    date: '2026-03-10',
     mileage: 42500,
     category: 'Brakes',
     type: 'Repair',
-    cost: 340.00,
-    provider: 'Precision Auto Brake Shop',
-    notes: 'Replaced front brake pads and resurfaced rotors.',
     createdAt: new Date().toISOString()
   },
   {
     id: 'rec-3',
     vehicleId: 'demo-v2',
-    date: '2026-05-20',
     mileage: 35000,
     category: 'Tires & Alignment',
     type: 'Maintenance',
-    cost: 680.00,
-    provider: 'Discount Tire Co',
-    notes: 'Set of 4 Michelin Pilot Sport 4 A/S tires mounted & balanced with alignment.',
     createdAt: new Date().toISOString()
+  }
+];
+
+// Shares document IDs 1:1 with INITIAL_RECORDS above.
+export const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'rec-1',
+    date: '2026-06-15',
+    time: '09:30',
+    amount: 75.50,
+    vendor: 'Toyota Dealership Service',
+    notes: 'Full synthetic 0W-20 oil change & OEM filter replacement. Tire rotation included.',
+    category: 'Car - Oil Change - 2021 - Toyota Tacoma TRD Off-Road',
+    paymentType: 'Credit Card',
+    user: 'Car Owner'
+  },
+  {
+    id: 'rec-2',
+    date: '2026-03-10',
+    time: '14:00',
+    amount: 340.00,
+    vendor: 'Precision Auto Brake Shop',
+    notes: 'Replaced front brake pads and resurfaced rotors.',
+    category: 'Car - Brakes - 2021 - Toyota Tacoma TRD Off-Road',
+    paymentType: 'Credit Card',
+    user: 'Car Owner'
+  },
+  {
+    id: 'rec-3',
+    date: '2026-05-20',
+    time: '11:15',
+    amount: 680.00,
+    vendor: 'Discount Tire Co',
+    notes: 'Set of 4 Michelin Pilot Sport 4 A/S tires mounted & balanced with alignment.',
+    category: 'Car - Tires & Alignment - 2019 - Honda Civic Si',
+    paymentType: 'Debit Card',
+    user: 'Car Owner'
   }
 ];
 
@@ -157,6 +183,28 @@ export const saveLocalRecords = (records: ServiceRecord[]): void => {
   }
 };
 
+export const loadLocalTransactions = (): Transaction[] => {
+  try {
+    const raw = localStorage.getItem(TRANSACTIONS_KEY);
+    if (!raw) {
+      localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(INITIAL_TRANSACTIONS));
+      return INITIAL_TRANSACTIONS;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Failed to load local transactions:', err);
+    return INITIAL_TRANSACTIONS;
+  }
+};
+
+export const saveLocalTransactions = (transactions: Transaction[]): void => {
+  try {
+    localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
+  } catch (err) {
+    console.error('Failed to save local transactions:', err);
+  }
+};
+
 export const loadLocalReminders = (): ServiceReminder[] => {
   try {
     const raw = localStorage.getItem(REMINDERS_KEY);
@@ -183,9 +231,11 @@ export const clearDemoData = (): void => {
   try {
     const vehicles = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
     const records = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
+    const transactions = loadLocalTransactions().filter(t => !t.id.startsWith('rec-'));
     const reminders = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
     saveLocalVehicles(vehicles);
     saveLocalRecords(records);
+    saveLocalTransactions(transactions);
     saveLocalReminders(reminders);
   } catch (err) {
     console.error('Failed to clear demo data:', err);
@@ -197,6 +247,7 @@ export const clearLocalDemoData = clearDemoData;
 export const restoreSampleData = (): void => {
   saveLocalVehicles(INITIAL_VEHICLES);
   saveLocalRecords(INITIAL_RECORDS);
+  saveLocalTransactions(INITIAL_TRANSACTIONS);
   saveLocalReminders(INITIAL_REMINDERS);
 };
 
@@ -241,16 +292,18 @@ export const setStoredFamilyCode = (code: string): void => {
   }
 };
 
-export const exportRecordsAsCSV = (records: ServiceRecord[], vehicles: Vehicle[]): void => {
+export const exportRecordsAsCSV = (records: EnrichedServiceRecord[], vehicles: Vehicle[]): void => {
   const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.year} ${v.make} ${v.model}`]));
-  const headers = ['Vehicle', 'Date', 'Category', 'Type', 'Mileage (mi)', 'Cost ($)', 'Provider', 'Notes'];
+  const headers = ['Vehicle', 'Date', 'Time', 'Category', 'Type', 'Mileage (mi)', 'Cost ($)', 'Payment Type', 'Provider', 'Notes'];
   const rows = records.map(r => [
     `"${vehicleMap.get(r.vehicleId) || 'Unknown Vehicle'}"`,
     `"${r.date}"`,
+    `"${r.time}"`,
     `"${r.category}"`,
     `"${r.type}"`,
     r.mileage,
     r.cost.toFixed(2),
+    `"${r.paymentType}"`,
     `"${(r.provider || '').replace(/"/g, '""')}"`,
     `"${(r.notes || '').replace(/"/g, '""')}"`
   ]);
@@ -267,15 +320,17 @@ export const exportRecordsAsCSV = (records: ServiceRecord[], vehicles: Vehicle[]
 };
 
 export const exportDataAsJSON = (
-  vehicles: Vehicle[], 
-  records: ServiceRecord[], 
-  reminders: ServiceReminder[]
+  vehicles: Vehicle[],
+  records: ServiceRecord[],
+  reminders: ServiceReminder[],
+  transactions: Transaction[]
 ): void => {
   const backupObj = {
-    version: '1.0',
+    version: '2.0',
     exportDate: new Date().toISOString(),
     vehicles,
     records,
+    transactions,
     reminders
   };
   const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
@@ -288,7 +343,7 @@ export const exportDataAsJSON = (
   document.body.removeChild(link);
 };
 
-export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; records: ServiceRecord[]; reminders: ServiceReminder[] } => {
+export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; records: ServiceRecord[]; reminders: ServiceReminder[]; transactions: Transaction[] } => {
   try {
     const data = JSON.parse(jsonString);
     if (!data.vehicles || !Array.isArray(data.vehicles)) {
@@ -297,12 +352,14 @@ export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; rec
     const vehicles: Vehicle[] = data.vehicles || [];
     const records: ServiceRecord[] = data.records || [];
     const reminders: ServiceReminder[] = data.reminders || [];
+    const transactions: Transaction[] = data.transactions || [];
 
     saveLocalVehicles(vehicles);
     saveLocalRecords(records);
+    saveLocalTransactions(transactions);
     saveLocalReminders(reminders);
 
-    return { vehicles, records, reminders };
+    return { vehicles, records, reminders, transactions };
   } catch (err: any) {
     throw new Error(err.message || 'Failed to parse JSON backup file.');
   }

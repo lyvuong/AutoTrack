@@ -49,21 +49,47 @@ export type ServiceCategory =
 
 export type ServiceType = 'Maintenance' | 'Repair' | 'Upgrade' | 'Inspection';
 
+export type PaymentType = 'Cash' | 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Check' | 'Other';
+
+// Generic, app-agnostic ledger entry. Shared across any app on this Firebase
+// project (users/{uid}/transactions or households/{code}/transactions) — not
+// AutoTrack-specific. Shares its document ID 1:1 with the ServiceRecord that
+// created it.
+export interface Transaction {
+  id: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  amount: number;
+  vendor: string;
+  notes?: string;
+  category: string;
+  paymentType: PaymentType;
+  user: string;
+}
+
 export interface ServiceRecord {
   id: string;
   vehicleId: string;
-  date: string; // YYYY-MM-DD
   mileage: number;
-  cost: number;
   category: ServiceCategory;
   type: ServiceType;
-  provider: string; // e.g. "Toyota Dealership", "DIY", "Firestone"
-  notes?: string;
   nextServiceMileage?: number;
   nextServiceDate?: string;
   createdAt: string;
   loggedBy?: UserAuditInfo;
   lastEditedBy?: UserAuditInfo;
+}
+
+// Read-side join of a ServiceRecord with its linked Transaction. Never
+// persisted directly — built in-memory so existing UI can keep reading
+// date/cost/provider/notes as flat fields.
+export interface EnrichedServiceRecord extends ServiceRecord {
+  date: string;
+  time: string;
+  cost: number;
+  provider: string;
+  notes?: string;
+  paymentType: PaymentType;
 }
 
 export interface ServiceReminder {

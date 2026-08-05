@@ -24,7 +24,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
 import type { Database } from 'firebase/database';
-import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, UserProfile, UserAuditInfo } from '../types';
+import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, Transaction, UserProfile, UserAuditInfo } from '../types';
 import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode, setStoredFamilyCode } from './storage';
 
 let app: FirebaseApp | null = null;
@@ -228,7 +228,7 @@ export const subscribeFirestoreRecords = (
   const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
   const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
   const target = getStorageTarget(userId, code);
-  const q = query(collection(db, target.root, target.id, 'records'), orderBy('date', 'desc'));
+  const q = query(collection(db, target.root, target.id, 'records'), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const records: ServiceRecord[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
@@ -263,6 +263,73 @@ export const deleteFirestoreRecord = async (userId: string, recordId: string, fa
     await deleteDoc(doc(db, target.root, target.id, 'records', recordId));
   } catch (err) {
     console.error('[Firestore] Error deleting record:', err);
+  }
+};
+
+// Full (non-merge) overwrite used only by the legacy-record migration, so
+// fields no longer on ServiceRecord (date/cost/provider/notes) are actually
+// dropped instead of lingering behind a merge write.
+export const overwriteFirestoreRecord = async (userId: string, record: ServiceRecord, familyCode?: string): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    const cleanRecord = JSON.parse(JSON.stringify(record));
+    const docRef = doc(db, target.root, target.id, 'records', record.id);
+    await setDoc(docRef, cleanRecord);
+    console.log(`[Firestore] Record migrated (overwritten) at ${target.root}/${target.id}:`, record.id);
+  } catch (err) {
+    console.error('[Firestore] Error overwriting record:', err);
+  }
+};
+
+// ==========================================
+// Generic Transactions Ledger (Firestore only)
+// Shared, app-agnostic collection: any future app on this Firebase project
+// can read/write users/{uid}/transactions or households/{code}/transactions
+// without knowing anything about vehicles or mileage.
+// ==========================================
+
+export const subscribeFirestoreTransactions = (
+  userId: string,
+  familyCodeOrCb?: string | ((transactions: Transaction[]) => void),
+  callback?: (transactions: Transaction[]) => void
+) => {
+  if (!db) return () => {};
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
+  const q = query(collection(db, target.root, target.id, 'transactions'), orderBy('date', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const transactions: Transaction[] = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    } as Transaction));
+    if (cb) cb(transactions);
+  }, (error) => {
+    console.error('[Firestore] Transactions sync error:', error);
+  });
+};
+
+export const saveFirestoreTransaction = async (userId: string, transaction: Transaction, familyCode?: string): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    const cleanTransaction = JSON.parse(JSON.stringify(transaction));
+    const docRef = doc(db, target.root, target.id, 'transactions', transaction.id);
+    await setDoc(docRef, cleanTransaction, { merge: true });
+    console.log(`[Firestore] Transaction saved successfully to ${target.root}/${target.id}:`, transaction.id);
+  } catch (err) {
+    console.error('[Firestore] Error saving transaction:', err);
+  }
+};
+
+export const deleteFirestoreTransaction = async (userId: string, transactionId: string, familyCode?: string): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    await deleteDoc(doc(db, target.root, target.id, 'transactions', transactionId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting transaction:', err);
   }
 };
 
@@ -373,7 +440,7 @@ export const subscribeRTDBRecords = (
       return;
     }
     const recordsList: ServiceRecord[] = Object.values(val);
-    recordsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    recordsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     if (cb) cb(recordsList);
   }, (err) => {
     console.error('[RTDB] Records sync error:', err);

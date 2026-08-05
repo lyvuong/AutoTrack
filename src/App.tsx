@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Navbar } from './components/Navbar/Navbar';
 import { TabNavigation } from './components/Navigation/TabNavigation';
 import { DashboardOverview } from './components/Dashboard/DashboardOverview';
@@ -14,44 +14,51 @@ import { ReminderModal } from './components/Reminders/ReminderModal';
 import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
 import { LoginScreen } from './components/Auth/LoginScreen';
 
-import type { Vehicle, ServiceRecord, ServiceReminder, UserProfile, ActiveTab } from './types';
-import { 
-  loadLocalVehicles, 
-  saveLocalVehicles, 
-  loadLocalRecords, 
-  saveLocalRecords, 
-  loadLocalReminders, 
-  saveLocalReminders, 
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, UserProfile, ActiveTab } from './types';
+import { buildTransactionCategory } from './utils/transactions';
+import {
+  loadLocalVehicles,
+  saveLocalVehicles,
+  loadLocalRecords,
+  saveLocalRecords,
+  loadLocalTransactions,
+  saveLocalTransactions,
+  loadLocalReminders,
+  saveLocalReminders,
   clearDemoData,
   restoreSampleData,
-  getActiveVehicleId, 
+  getActiveVehicleId,
   setActiveVehicleId,
   getStoredFamilyCode,
   setStoredFamilyCode
 } from './services/storage';
 
-import { 
-  initializeFirebaseService, 
-  isFirebaseConfigured, 
-  subscribeAuth, 
+import {
+  initializeFirebaseService,
+  isFirebaseConfigured,
+  subscribeAuth,
   loginWithGoogle,
   tryAutoSignInGoogle,
-  subscribeFirestoreVehicles, 
-  subscribeFirestoreRecords, 
+  subscribeFirestoreVehicles,
+  subscribeFirestoreRecords,
+  subscribeFirestoreTransactions,
   subscribeFirestoreReminders,
-  saveFirestoreVehicle, 
-  deleteFirestoreVehicle, 
-  saveFirestoreRecord, 
+  saveFirestoreVehicle,
+  deleteFirestoreVehicle,
+  saveFirestoreRecord,
   deleteFirestoreRecord,
+  overwriteFirestoreRecord,
+  saveFirestoreTransaction,
+  deleteFirestoreTransaction,
   saveFirestoreReminder,
   deleteFirestoreReminder,
   verifyOrCreateHousehold,
   subscribeRTDBVehicles,
   subscribeRTDBRecords,
   subscribeRTDBReminders,
-  saveRTDBVehicle, 
-  deleteRTDBVehicle, 
-  saveRTDBRecord, 
+  saveRTDBVehicle,
+  deleteRTDBVehicle,
+  saveRTDBRecord,
   deleteRTDBRecord,
   saveRTDBReminder,
   deleteRTDBReminder
@@ -61,6 +68,7 @@ export const App: React.FC = () => {
   // State Initialization
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => loadLocalVehicles());
   const [records, setRecords] = useState<ServiceRecord[]>(() => loadLocalRecords());
+  const [transactions, setTransactions] = useState<Transaction[]>(() => loadLocalTransactions());
   const [reminders, setReminders] = useState<ServiceReminder[]>(() => loadLocalReminders());
   const [activeVehicleId, setActiveVehicleIdState] = useState<string>(() => getActiveVehicleId());
   const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
@@ -98,7 +106,7 @@ export const App: React.FC = () => {
 
   // Modals state
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<ServiceRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<EnrichedServiceRecord | null>(null);
   
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
 
@@ -215,6 +223,28 @@ export const App: React.FC = () => {
             }
           });
 
+          let hasSeededTransactions = false;
+          const unSubTransactionsFS = subscribeFirestoreTransactions(userProfile.uid, familyCode, (cloudTransactions) => {
+            if (cloudTransactions.length > 0) {
+              hasSeededTransactions = true;
+              setTransactions(cloudTransactions);
+              saveLocalTransactions(cloudTransactions);
+            } else if (hasSeededTransactions) {
+              setTransactions([]);
+              saveLocalTransactions([]);
+            } else {
+              hasSeededTransactions = true;
+              const local = loadLocalTransactions().filter((t: Transaction) => !t.id.startsWith('rec-'));
+              if (local.length > 0) {
+                setTransactions(local);
+                local.forEach((t: Transaction) => saveFirestoreTransaction(userProfile.uid, t, familyCode));
+              } else {
+                setTransactions([]);
+                saveLocalTransactions([]);
+              }
+            }
+          });
+
           const unSubRemindersFS = subscribeFirestoreReminders(userProfile.uid, familyCode, (cloudReminders) => {
             if (cloudReminders.length > 0) {
               hasSeededReminders = true;
@@ -255,6 +285,7 @@ export const App: React.FC = () => {
             unSubVehiclesRTDB();
             unSubRecordsFS();
             unSubRecordsRTDB();
+            unSubTransactionsFS();
             unSubRemindersFS();
             unSubRemindersRTDB();
           };
@@ -279,6 +310,10 @@ export const App: React.FC = () => {
   }, [records]);
 
   useEffect(() => {
+    saveLocalTransactions(transactions);
+  }, [transactions]);
+
+  useEffect(() => {
     saveLocalReminders(reminders);
   }, [reminders]);
 
@@ -293,6 +328,75 @@ export const App: React.FC = () => {
   }, [vehicles, activeVehicleId]);
 
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || null;
+
+  // One-time migration: split any pre-refactor record that still carries the
+  // old inline date/cost/provider/notes fields into a matching Transaction
+  // doc, then overwrite the record to its slim shape. Idempotent — once a
+  // record is slimmed it no longer matches the legacy-detection filter.
+  useEffect(() => {
+    if (!isFirebaseActive || !user || vehicles.length === 0) return;
+
+    const legacyRecords = records.filter((r: any) => r.date !== undefined || r.cost !== undefined);
+    if (legacyRecords.length === 0) return;
+
+    legacyRecords.forEach((legacy: any) => {
+      const vehicle = vehicles.find(v => v.id === legacy.vehicleId);
+      if (!vehicle) return;
+
+      const migratedTransaction: Transaction = {
+        id: legacy.id,
+        date: legacy.date || new Date().toISOString().split('T')[0],
+        time: legacy.time || '00:00',
+        amount: Number(legacy.cost) || 0,
+        vendor: legacy.provider || 'Unknown',
+        notes: legacy.notes || '',
+        category: buildTransactionCategory(legacy.category, vehicle),
+        paymentType: legacy.paymentType || 'Cash',
+        user: legacy.loggedBy?.displayName || user.displayName || 'Car Owner'
+      };
+
+      const slimRecord: ServiceRecord = {
+        id: legacy.id,
+        vehicleId: legacy.vehicleId,
+        mileage: legacy.mileage,
+        category: legacy.category,
+        type: legacy.type,
+        nextServiceMileage: legacy.nextServiceMileage,
+        nextServiceDate: legacy.nextServiceDate,
+        createdAt: legacy.createdAt,
+        loggedBy: legacy.loggedBy,
+        lastEditedBy: legacy.lastEditedBy
+      };
+
+      saveFirestoreTransaction(user.uid, migratedTransaction, familyCode);
+      overwriteFirestoreRecord(user.uid, slimRecord, familyCode);
+
+      setTransactions(prev => [...prev.filter(t => t.id !== legacy.id), migratedTransaction]);
+      setRecords(prev => prev.map(r => r.id === legacy.id ? slimRecord : r));
+    });
+  }, [records, vehicles, isFirebaseActive, user, familyCode]);
+
+  // Join records with their linked transaction for display. Existing UI
+  // components keep reading flat date/cost/provider/notes fields.
+  const enrichedRecords: EnrichedServiceRecord[] = useMemo(() => {
+    const transactionsById = new Map(transactions.map(t => [t.id, t]));
+    return records
+      .map((r): EnrichedServiceRecord | null => {
+        const t = transactionsById.get(r.id);
+        if (!t) return null;
+        return {
+          ...r,
+          date: t.date,
+          time: t.time,
+          cost: t.amount,
+          provider: t.vendor,
+          notes: t.notes,
+          paymentType: t.paymentType
+        };
+      })
+      .filter((r): r is EnrichedServiceRecord => r !== null)
+      .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  }, [records, transactions]);
 
   // Handlers for Vehicles
   const handleSaveVehicle = (vehicleData: Omit<Vehicle, 'createdAt' | 'updatedAt'>) => {
@@ -335,8 +439,11 @@ export const App: React.FC = () => {
 
   const handleDeleteVehicle = (id: string) => {
     if (!confirm('Are you sure you want to delete this vehicle and all associated service records?')) return;
+    const removedRecordIds = records.filter(r => r.vehicleId === id).map(r => r.id);
+
     setVehicles(prev => prev.filter(v => v.id !== id));
     setRecords(prev => prev.filter(r => r.vehicleId !== id));
+    setTransactions(prev => prev.filter(t => !removedRecordIds.includes(t.id)));
     setReminders(prev => prev.filter(rem => rem.vehicleId !== id));
 
     if (activeVehicleId === id) {
@@ -349,12 +456,19 @@ export const App: React.FC = () => {
     if (user && isFirebaseActive) {
       deleteFirestoreVehicle(user.uid, id, familyCode);
       deleteRTDBVehicle(user.uid, id, familyCode);
+      removedRecordIds.forEach(recordId => {
+        deleteFirestoreRecord(user.uid, recordId, familyCode);
+        deleteRTDBRecord(user.uid, recordId, familyCode);
+        deleteFirestoreTransaction(user.uid, recordId, familyCode);
+      });
     }
   };
 
   // Handlers for Service Records
-  const handleSaveRecord = (recordData: Partial<ServiceRecord>) => {
+  const handleSaveRecord = (recordData: Partial<EnrichedServiceRecord>) => {
     if (!activeVehicleId) return;
+    const vehicle = vehicles.find(v => v.id === activeVehicleId);
+    if (!vehicle) return;
 
     const isEdit = !!editingRecord;
     const recordId = editingRecord ? editingRecord.id : `rec-${Date.now()}`;
@@ -366,21 +480,31 @@ export const App: React.FC = () => {
       email: user.email || undefined
     } : undefined;
 
+    const category = recordData.category || 'General Repair';
+
     const newRecord: ServiceRecord = {
       id: recordId,
       vehicleId: activeVehicleId,
-      date: recordData.date || new Date().toISOString().split('T')[0],
       mileage: Number(recordData.mileage) || 0,
-      cost: Number(recordData.cost) || 0,
-      category: recordData.category || 'General Repair',
+      category,
       type: recordData.type || 'Maintenance',
-      provider: recordData.provider || 'DIY',
-      notes: recordData.notes || '',
       nextServiceMileage: recordData.nextServiceMileage ? Number(recordData.nextServiceMileage) : undefined,
       nextServiceDate: recordData.nextServiceDate || undefined,
       createdAt: isEdit ? editingRecord.createdAt : timestamp,
       loggedBy: isEdit ? (editingRecord.loggedBy || auditInfo) : auditInfo,
       lastEditedBy: auditInfo
+    };
+
+    const newTransaction: Transaction = {
+      id: recordId,
+      date: recordData.date || new Date().toISOString().split('T')[0],
+      time: recordData.time || new Date().toTimeString().slice(0, 5),
+      amount: Number(recordData.cost) || 0,
+      vendor: recordData.provider || 'DIY',
+      notes: recordData.notes || '',
+      category: buildTransactionCategory(category, vehicle),
+      paymentType: recordData.paymentType || 'Cash',
+      user: auditInfo?.displayName || 'Car Owner'
     };
 
     setRecords(prev => {
@@ -391,10 +515,18 @@ export const App: React.FC = () => {
       return [newRecord, ...prev];
     });
 
+    setTransactions(prev => {
+      const exists = prev.some(t => t.id === recordId);
+      if (exists) {
+        return prev.map(t => t.id === recordId ? newTransaction : t);
+      }
+      return [newTransaction, ...prev];
+    });
+
     if (activeVehicle && newRecord.mileage > activeVehicle.currentMileage) {
-      const updatedVeh = { 
-        ...activeVehicle, 
-        currentMileage: newRecord.mileage, 
+      const updatedVeh = {
+        ...activeVehicle,
+        currentMileage: newRecord.mileage,
         updatedAt: timestamp,
         lastEditedBy: auditInfo
       };
@@ -411,15 +543,18 @@ export const App: React.FC = () => {
     if (user && isFirebaseActive) {
       saveFirestoreRecord(user.uid, newRecord, familyCode);
       saveRTDBRecord(user.uid, newRecord, familyCode);
+      saveFirestoreTransaction(user.uid, newTransaction, familyCode);
     }
   };
 
   const handleDeleteRecord = (id: string) => {
     if (!confirm('Delete this service record log?')) return;
     setRecords(prev => prev.filter(r => r.id !== id));
+    setTransactions(prev => prev.filter(t => t.id !== id));
     if (user && isFirebaseActive) {
       deleteFirestoreRecord(user.uid, id, familyCode);
       deleteRTDBRecord(user.uid, id, familyCode);
+      deleteFirestoreTransaction(user.uid, id, familyCode);
     }
   };
 
@@ -493,6 +628,7 @@ export const App: React.FC = () => {
   const handleRefreshData = () => {
     setVehicles(loadLocalVehicles());
     setRecords(loadLocalRecords());
+    setTransactions(loadLocalTransactions());
     setReminders(loadLocalReminders());
   };
 
@@ -500,6 +636,7 @@ export const App: React.FC = () => {
     clearDemoData();
     setVehicles([]);
     setRecords([]);
+    setTransactions([]);
     setReminders([]);
   };
 
@@ -508,6 +645,7 @@ export const App: React.FC = () => {
     const freshVehicles = loadLocalVehicles();
     setVehicles(freshVehicles);
     setRecords(loadLocalRecords());
+    setTransactions(loadLocalTransactions());
     setReminders(loadLocalReminders());
     if (freshVehicles.length > 0) {
       handleSelectVehicle(freshVehicles[0].id);
@@ -562,7 +700,7 @@ export const App: React.FC = () => {
         {activeTab === 'dashboard' && (
           <DashboardOverview
             activeVehicle={activeVehicle}
-            records={records}
+            records={enrichedRecords}
             reminders={reminders}
             onOpenAddService={() => {
               setEditingRecord(null);
@@ -593,14 +731,14 @@ export const App: React.FC = () => {
 
         {activeTab === 'history' && (
           <ServiceHistory
-            records={records}
+            records={enrichedRecords}
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
             onOpenAddService={() => {
               setEditingRecord(null);
               setIsServiceModalOpen(true);
             }}
-            onEditRecord={(rec: ServiceRecord) => {
+            onEditRecord={(rec: EnrichedServiceRecord) => {
               setEditingRecord(rec);
               setIsServiceModalOpen(true);
             }}
@@ -624,7 +762,7 @@ export const App: React.FC = () => {
           <CostAnalytics
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
-            records={records}
+            records={enrichedRecords}
           />
         )}
 

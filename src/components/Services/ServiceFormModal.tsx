@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Wrench, BellPlus } from 'lucide-react';
-import type { Vehicle, ServiceRecord, ServiceCategory, ServiceType } from '../../types';
+import type { Vehicle, EnrichedServiceRecord, ServiceCategory, ServiceType, PaymentType } from '../../types';
 
 interface ServiceFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (record: Omit<ServiceRecord, 'createdAt'>, createReminder?: { nextMileage?: number; nextDate?: string }) => void;
+  onSave: (record: Partial<EnrichedServiceRecord>, createReminder?: { nextMileage?: number; nextDate?: string }) => void;
   vehicles: Vehicle[];
   activeVehicleId: string;
-  initialRecord?: ServiceRecord | null;
+  initialRecord?: EnrichedServiceRecord | null;
 }
 
 const CATEGORIES: ServiceCategory[] = [
@@ -29,6 +29,8 @@ const CATEGORIES: ServiceCategory[] = [
 
 const TYPES: ServiceType[] = ['Maintenance', 'Repair', 'Upgrade', 'Inspection'];
 
+const PAYMENT_TYPES: PaymentType[] = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Check', 'Other'];
+
 export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   isOpen,
   onClose,
@@ -39,12 +41,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
 }) => {
   const [vehicleId, setVehicleId] = useState(activeVehicleId);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [mileage, setMileage] = useState<number | ''>('');
   const [cost, setCost] = useState<number | ''>('');
   const [category, setCategory] = useState<ServiceCategory>('Oil Change');
   const [type, setType] = useState<ServiceType>('Maintenance');
   const [provider, setProvider] = useState('');
   const [notes, setNotes] = useState('');
+  const [paymentType, setPaymentType] = useState<PaymentType>('Cash');
 
   // Optional Reminder
   const [addNextReminder, setAddNextReminder] = useState(false);
@@ -55,12 +59,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     if (initialRecord) {
       setVehicleId(initialRecord.vehicleId);
       setDate(initialRecord.date);
+      setTime(initialRecord.time || new Date().toTimeString().slice(0, 5));
       setMileage(initialRecord.mileage);
       setCost(initialRecord.cost);
       setCategory(initialRecord.category);
       setType(initialRecord.type);
       setProvider(initialRecord.provider || '');
       setNotes(initialRecord.notes || '');
+      setPaymentType(initialRecord.paymentType || 'Cash');
       setNextServiceMileage(initialRecord.nextServiceMileage || '');
       setNextServiceDate(initialRecord.nextServiceDate || '');
       setAddNextReminder(Boolean(initialRecord.nextServiceMileage || initialRecord.nextServiceDate));
@@ -68,12 +74,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       const active = vehicles.find(v => v.id === activeVehicleId);
       setVehicleId(activeVehicleId || (vehicles[0]?.id || ''));
       setDate(new Date().toISOString().split('T')[0]);
+      setTime(new Date().toTimeString().slice(0, 5));
       setMileage(active?.currentMileage || '');
       setCost('');
       setCategory('Oil Change');
       setType('Maintenance');
       setProvider('');
       setNotes('');
+      setPaymentType('Cash');
       setNextServiceMileage('');
       setNextServiceDate('');
       setAddNextReminder(false);
@@ -86,16 +94,18 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
     e.preventDefault();
     if (!vehicleId || mileage === '' || cost === '') return;
 
-    const recordData: Omit<ServiceRecord, 'createdAt'> = {
+    const recordData: Partial<EnrichedServiceRecord> = {
       id: initialRecord ? initialRecord.id : `rec-${Date.now()}`,
       vehicleId,
       date,
+      time,
       mileage: Number(mileage),
       cost: Number(cost),
       category,
       type,
       provider: provider.trim() || 'Self / DIY',
       notes: notes.trim() || undefined,
+      paymentType,
       nextServiceMileage: addNextReminder && nextServiceMileage !== '' ? Number(nextServiceMileage) : undefined,
       nextServiceDate: addNextReminder && nextServiceDate ? nextServiceDate : undefined,
     };
@@ -152,7 +162,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Date *</label>
               <input
@@ -160,6 +170,16 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                className="w-full glass-input text-white text-sm rounded-xl p-2.5"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Time *</label>
+              <input
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
                 className="w-full glass-input text-white text-sm rounded-xl p-2.5"
               />
             </div>
@@ -190,7 +210,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Service Category *</label>
               <select
@@ -213,6 +233,19 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Payment Type *</label>
+              <select
+                value={paymentType}
+                onChange={(e) => setPaymentType(e.target.value as PaymentType)}
+                className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900"
+              >
+                {PAYMENT_TYPES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>

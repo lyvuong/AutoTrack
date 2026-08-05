@@ -13,11 +13,11 @@ import {
   Car,
   Tag
 } from 'lucide-react';
-import type { Vehicle, ServiceRecord, ServiceReminder } from '../../types';
+import type { Vehicle, EnrichedServiceRecord, ServiceReminder } from '../../types';
 
 interface DashboardOverviewProps {
   activeVehicle: Vehicle | null;
-  records: ServiceRecord[];
+  records: EnrichedServiceRecord[];
   reminders: ServiceReminder[];
   onOpenAddService: () => void;
   onOpenAddVehicle: () => void;

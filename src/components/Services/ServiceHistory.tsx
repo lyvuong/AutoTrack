@@ -8,15 +8,15 @@ import {
   Edit2, 
   Trash2
 } from 'lucide-react';
-import type { Vehicle, ServiceRecord } from '../../types';
+import type { Vehicle, EnrichedServiceRecord } from '../../types';
 import { exportRecordsAsCSV } from '../../services/storage';
 
 interface ServiceHistoryProps {
-  records: ServiceRecord[];
+  records: EnrichedServiceRecord[];
   vehicles: Vehicle[];
   activeVehicleId: string;
   onOpenAddService: () => void;
-  onEditRecord: (record: ServiceRecord) => void;
+  onEditRecord: (record: EnrichedServiceRecord) => void;
   onDeleteRecord: (id: string) => void;
 }
 
@@ -263,6 +263,11 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
                         {record.notes}
                       </p>
                     )}
+
+                    <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-500">
+                      <span>💳 {record.paymentType}</span>
+                      <span>• 🕐 {record.time}</span>
+                    </div>
 
                     {/* Multi-User Audit Badges */}
                     {record.loggedBy && (

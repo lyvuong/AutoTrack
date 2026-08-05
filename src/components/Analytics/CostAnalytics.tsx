@@ -12,13 +12,13 @@ import {
   Cell, 
   Legend 
 } from 'recharts';
-import type { Vehicle, ServiceRecord } from '../../types';
+import type { Vehicle, EnrichedServiceRecord } from '../../types';
 import { BarChart3, PieChart as PieIcon, DollarSign, TrendingUp } from 'lucide-react';
 
 interface CostAnalyticsProps {
   vehicles: Vehicle[];
   activeVehicleId: string;
-  records: ServiceRecord[];
+  records: EnrichedServiceRecord[];
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
