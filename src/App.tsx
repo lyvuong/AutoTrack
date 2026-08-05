@@ -720,6 +720,10 @@ export const App: React.FC = () => {
         vehicles={vehicles}
         activeVehicleId={activeVehicleId}
         onSelectVehicle={handleSelectVehicle}
+        onOpenAddService={() => {
+          setEditingRecord(null);
+          setIsServiceModalOpen(true);
+        }}
         onOpenAddVehicle={() => {
           setIsVehicleModalOpen(true);
         }}
