@@ -13,7 +13,7 @@
 ## ✨ Features
 
 - 🚘 **Vehicle Garage Management**: Keep detailed profiles for all your cars, trucks, and motorcycles. Store VIN, license plate, current mileage, engine/transmission specs, oil type, filter part numbers, and custom notes.
-- 📋 **Comprehensive Service Logs**: Record maintenance procedures (Oil Changes, Brakes, Tires, Battery, Inspections, Repairs) with dates, odometer readings, itemized costs, service providers, and notes.
+- 📋 **Comprehensive Service Logs**: Record maintenance procedures (Oil Changes, Brakes, Tires, Battery, Inspections, Repairs) with dates, times, odometer readings, itemized costs, payment types, service providers, and notes.
 - ⏰ **Smart Maintenance Reminders**: Stay ahead of service with mileage-based and date-based reminders automatically categorized by urgency (*Overdue*, *Due Soon*, *Good Condition*).
 - 📊 **Interactive Financial Analytics**: View cost summaries per vehicle, total lifetime maintenance expenses, and monthly cost breakdowns.
 - 👨‍👩‍👧‍👦 **Shared Household Garage Sync**: Real-time cross-device sync via a shared **Household Code** (e.g. `VUONG-FAMILY`). Family members using their own Google account view and update the exact same shared garage seamlessly.
@@ -53,6 +53,8 @@
    ```bash
    npm run build
    ```
+
+> **Note**: The service worker (`public/sw.js`) only registers in production builds (`import.meta.env.PROD`). It's intentionally skipped in `npm run dev` — its fetch handler caches every same-origin GET request, which would otherwise serve stale cached JS during active development.
 
 ---
 
@@ -251,6 +253,28 @@ You can also deploy directly from your local terminal using Cloudflare's **Wrang
 3. **Instant Real-Time Sync**:
    - All vehicles, service logs, and maintenance reminders created by any family member will sync across devices in real time!
    - Audit badges will show who logged each service (`👤 Logged by [Name]`).
+
+---
+
+## 🧾 Shared `transactions` Ledger (For Other Apps)
+
+Every service log is split across two linked Firestore documents that share the same ID:
+
+- **`records/{id}`** — AutoTrack-specific fields only: `vehicleId`, `mileage`, `category`, `type`, `nextServiceMileage`, `nextServiceDate`, plus audit metadata.
+- **`transactions/{id}`** — a generic, app-agnostic ledger entry, stored alongside `records` at the same scope (`users/{uid}/transactions` or `households/{code}/transactions`):
+
+  | Field | Type | Notes |
+  |---|---|---|
+  | `date` | `string` (`YYYY-MM-DD`) | Service date |
+  | `time` | `string` (`HH:MM`) | Time the entry was logged |
+  | `amount` | `number` | AutoTrack's "Cost" |
+  | `vendor` | `string` | AutoTrack's "Service Provider / Shop Name" |
+  | `notes` | `string?` | Free text |
+  | `category` | `string` | Free-form; AutoTrack auto-fills `"Car - {ServiceCategory} - {year} - {make} {model}"` |
+  | `paymentType` | `'Cash' \| 'Credit Card' \| 'Debit Card' \| 'Bank Transfer' \| 'Check' \| 'Other'` | |
+  | `user` | `string` | Display name of whoever logged it |
+
+Any other app sharing this Firebase project can read/write `transactions` under the same user/household scope without needing to understand vehicles, mileage, or service categories — it's a plain financial ledger. AutoTrack itself joins `records` + `transactions` client-side (matching by shared document ID) to reconstruct the full service log for display.
 
 ---
 

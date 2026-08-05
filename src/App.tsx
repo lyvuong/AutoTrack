@@ -40,6 +40,7 @@ import {
   loginWithGoogle,
   tryAutoSignInGoogle,
   subscribeFirestoreVehicles,
+  getPersonalVehiclesOnce,
   subscribeFirestoreRecords,
   subscribeFirestoreTransactions,
   subscribeFirestoreReminders,
@@ -329,6 +330,35 @@ export const App: React.FC = () => {
 
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || null;
 
+  // Self-heal: when a household is active but has no vehicles yet, a member
+  // may still have records referencing a vehicle that only ever lived under
+  // their personal users/{uid}/vehicles (created before the household had
+  // any vehicles of its own). Promote any such referenced vehicle into the
+  // active household scope, reusing the same vehicle ID so the reference
+  // keeps resolving.
+  useEffect(() => {
+    if (!isFirebaseActive || !user || !familyCode || vehicles.length > 0 || records.length === 0) return;
+
+    getPersonalVehiclesOnce(user.uid).then(personalVehicles => {
+      const neededIds = new Set(records.map(r => r.vehicleId));
+      const toPromote = personalVehicles.filter(v => neededIds.has(v.id));
+      if (toPromote.length === 0) return;
+
+      toPromote.forEach(v => {
+        saveFirestoreVehicle(user.uid, v, familyCode);
+        saveRTDBVehicle(user.uid, v, familyCode);
+      });
+
+      setVehicles(prev => {
+        const merged = [...prev];
+        toPromote.forEach(v => {
+          if (!merged.some(m => m.id === v.id)) merged.push(v);
+        });
+        return merged;
+      });
+    });
+  }, [isFirebaseActive, user, familyCode, vehicles.length, records]);
+
   // One-time migration: split any pre-refactor record that still carries the
   // old inline date/cost/provider/notes fields into a matching Transaction
   // doc, then overwrite the record to its slim shape. Idempotent — once a
@@ -341,7 +371,10 @@ export const App: React.FC = () => {
 
     legacyRecords.forEach((legacy: any) => {
       const vehicle = vehicles.find(v => v.id === legacy.vehicleId);
-      if (!vehicle) return;
+      if (!vehicle) {
+        console.warn('[Migration] Skipping legacy record — no matching vehicle currently loaded:', legacy.id, 'vehicleId:', legacy.vehicleId);
+        return;
+      }
 
       const migratedTransaction: Transaction = {
         id: legacy.id,
@@ -370,6 +403,11 @@ export const App: React.FC = () => {
 
       saveFirestoreTransaction(user.uid, migratedTransaction, familyCode);
       overwriteFirestoreRecord(user.uid, slimRecord, familyCode);
+      // RTDB's set() always fully replaces the node at that path, so reusing
+      // the normal save function here strips the legacy fields too. Without
+      // this, subscribeRTDBRecords keeps re-delivering the unmigrated shape
+      // and stomps the Firestore-driven slim state back to legacy.
+      saveRTDBRecord(user.uid, slimRecord, familyCode);
 
       setTransactions(prev => [...prev.filter(t => t.id !== legacy.id), migratedTransaction]);
       setRecords(prev => prev.map(r => r.id === legacy.id ? slimRecord : r));

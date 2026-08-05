@@ -10,16 +10,17 @@ import {
   createUserWithEmailAndPassword
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  doc, 
+import {
+  getFirestore,
+  collection,
+  doc,
   getDoc,
-  setDoc, 
-  deleteDoc, 
-  onSnapshot, 
-  query, 
-  orderBy 
+  getDocs,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
@@ -192,6 +193,21 @@ export const subscribeFirestoreVehicles = (
   });
 };
 
+// One-time fetch of a user's personal vehicles, bypassing getStorageTarget's
+// household fallback. Used to auto-promote a vehicle into an active
+// household's scope when a household record references it but it was only
+// ever saved under the user's personal users/{uid}/vehicles.
+export const getPersonalVehiclesOnce = async (userId: string): Promise<Vehicle[]> => {
+  if (!db) return [];
+  try {
+    const snapshot = await getDocs(collection(db, 'users', userId, 'vehicles'));
+    return snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Vehicle));
+  } catch (err) {
+    console.error('[Firestore] Error fetching personal vehicles:', err);
+    return [];
+  }
+};
+
 export const saveFirestoreVehicle = async (userId: string, vehicle: Vehicle, familyCode?: string): Promise<void> => {
   if (!db) return;
   try {
@@ -228,7 +244,11 @@ export const subscribeFirestoreRecords = (
   const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
   const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
   const target = getStorageTarget(userId, code);
-  const q = query(collection(db, target.root, target.id, 'records'), orderBy('createdAt', 'desc'));
+  // No orderBy here: some legacy records predate the createdAt field, and
+  // Firestore's orderBy(field) silently drops any document missing that
+  // field from the results. Sorting happens client-side on the enriched
+  // (date+time joined) list instead.
+  const q = query(collection(db, target.root, target.id, 'records'));
   return onSnapshot(q, (snapshot) => {
     const records: ServiceRecord[] = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
