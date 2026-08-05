@@ -123,9 +123,11 @@ export const AboutPage: React.FC<AboutPageProps> = () => {
         <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800/90 flex flex-col sm:flex-row items-center sm:items-start gap-5">
           <div className="relative shrink-0">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-600 p-1 shadow-lg shadow-cyan-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[12px] flex items-center justify-center text-cyan-400 font-black text-2xl font-display">
-                LV
-              </div>
+              <img
+                src="/avatar.png"
+                alt="Ly Vuong"
+                className="w-full h-full rounded-[12px] object-cover"
+              />
             </div>
             <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 text-slate-950 rounded-full flex items-center justify-center border-2 border-slate-950" title="Active Developer">
               <CheckCircle2 className="w-4 h-4" />
