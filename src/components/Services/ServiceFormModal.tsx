@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Wrench, BellPlus } from 'lucide-react';
+import { X, Save, Wrench, BellPlus, ReceiptText } from 'lucide-react';
 import type { Vehicle, EnrichedServiceRecord, ServiceCategory, ServiceType, PaymentType } from '../../types';
 
 interface ServiceFormModalProps {
@@ -22,12 +22,21 @@ const CATEGORIES: ServiceCategory[] = [
   'Scheduled Maintenance',
   'General Repair',
   'Detailing & Body',
+  'Registration',
+  'Safety Inspection',
+  'Emission Inspection',
+  'Property Tax',
+  'Insurance',
+  'Parking',
+  'Traffic Tickets',
+  'Tolls',
+  'Decal & License',
   'Inspection & Registration',
   'Fuel Log',
   'Other'
 ];
 
-const TYPES: ServiceType[] = ['Maintenance', 'Repair', 'Upgrade', 'Inspection'];
+const TYPES: ServiceType[] = ['Maintenance', 'Repair', 'Upgrade', 'Inspection', 'Fee / Tax', 'Other Expense'];
 
 const PAYMENT_TYPES: PaymentType[] = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Check', 'Other'];
 
@@ -49,6 +58,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const [provider, setProvider] = useState('');
   const [notes, setNotes] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('Cash');
+  const [isTaxDeductible, setIsTaxDeductible] = useState<boolean>(false);
 
   // Optional Reminder
   const [addNextReminder, setAddNextReminder] = useState(false);
@@ -67,6 +77,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setProvider(initialRecord.provider || '');
       setNotes(initialRecord.notes || '');
       setPaymentType(initialRecord.paymentType || 'Cash');
+      setIsTaxDeductible(Boolean(initialRecord.isTaxDeductible));
       setNextServiceMileage(initialRecord.nextServiceMileage || '');
       setNextServiceDate(initialRecord.nextServiceDate || '');
       setAddNextReminder(Boolean(initialRecord.nextServiceMileage || initialRecord.nextServiceDate));
@@ -82,6 +93,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setProvider('');
       setNotes('');
       setPaymentType('Cash');
+      setIsTaxDeductible(false);
       setNextServiceMileage('');
       setNextServiceDate('');
       setAddNextReminder(false);
@@ -89,6 +101,22 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   }, [initialRecord, isOpen, activeVehicleId, vehicles]);
 
   if (!isOpen) return null;
+
+  const isTaxDeductibleCategory = (cat: ServiceCategory) =>
+    cat === 'Registration' || cat === 'Property Tax' || cat === 'Inspection & Registration';
+
+  const handleCategoryChange = (newCat: ServiceCategory) => {
+    setCategory(newCat);
+    setIsTaxDeductible(isTaxDeductibleCategory(newCat));
+
+    if (['Registration', 'Property Tax', 'Decal & License', 'Traffic Tickets', 'Tolls'].includes(newCat)) {
+      setType('Fee / Tax');
+    } else if (['Safety Inspection', 'Emission Inspection'].includes(newCat)) {
+      setType('Inspection');
+    } else if (['Insurance', 'Parking'].includes(newCat)) {
+      setType('Other Expense');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +134,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       provider: provider.trim() || 'Self / DIY',
       notes: notes.trim() || undefined,
       paymentType,
+      isTaxDeductible,
       nextServiceMileage: addNextReminder && nextServiceMileage !== '' ? Number(nextServiceMileage) : undefined,
       nextServiceDate: addNextReminder && nextServiceDate ? nextServiceDate : undefined,
     };
@@ -131,7 +160,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               <Wrench className="w-5 h-5" />
             </div>
             <h2 className="text-lg font-bold text-white">
-              {initialRecord ? 'Edit Service Record' : 'Log New Service / Repair'}
+              {initialRecord ? 'Edit Record / Expense' : 'Log Service or Vehicle Expense'}
             </h2>
           </div>
           <button
@@ -212,10 +241,10 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Service Category *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Category *</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as ServiceCategory)}
+                onChange={(e) => handleCategoryChange(e.target.value as ServiceCategory)}
                 className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900"
               >
                 {CATEGORIES.map((cat) => (
@@ -225,7 +254,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Service Type *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Expense / Log Type *</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as ServiceType)}
@@ -251,11 +280,43 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             </div>
           </div>
 
+          {/* Tax Deductible Selector */}
+          <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isTaxDeductible}
+                  onChange={(e) => setIsTaxDeductible(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <ReceiptText className="w-4 h-4 text-emerald-400" />
+                  Tax-Deductible Expense
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsTaxDeductible(!isTaxDeductible)}
+                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  isTaxDeductible
+                    ? 'bg-emerald-950 text-emerald-400 border-emerald-800 hover:bg-emerald-900/60'
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                }`}
+              >
+                {isTaxDeductible ? 'TAX-DEDUCTIBLE ON' : 'TAX-DEDUCTIBLE OFF'}
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400 pl-6">
+              Selectable for any expense. Defaulted ON for vehicle registration fees & property taxes.
+            </p>
+          </div>
+
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Service Provider / Shop Name</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Provider / Payee / Agency Name</label>
             <input
               type="text"
-              placeholder="e.g. Toyota Dealership, Jiffy Lube, DIY Garage"
+              placeholder="e.g. DMV, County Treasury, Toyota Dealership, State Farm"
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
               className="w-full glass-input text-white text-sm rounded-xl p-2.5"
@@ -263,10 +324,10 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Notes, Parts Used & Specifications</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Notes, Receipts & Specifications</label>
             <textarea
               rows={3}
-              placeholder="0W-20 Full synthetic oil, OEM Filter #12345, tire pressure set to 35 PSI..."
+              placeholder="Registration tag #98765, annual property tax assessment, 0W-20 oil..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full glass-input text-white text-sm rounded-xl p-2.5 resize-none"
@@ -285,7 +346,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                 />
                 <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <BellPlus className="w-4 h-4 text-amber-400" />
-                  Schedule Next Service Reminder
+                  Schedule Next Service / Renewal Reminder
                 </span>
               </label>
             </div>
@@ -293,7 +354,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             {addNextReminder && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Next Service Mileage Target</label>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Next Mileage Target</label>
                   <input
                     type="number"
                     placeholder="e.g. 40000"
@@ -303,7 +364,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Next Service Target Date</label>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Next Due Date</label>
                   <input
                     type="date"
                     value={nextServiceDate}
@@ -329,7 +390,7 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20"
             >
               <Save className="w-4 h-4" />
-              Save Service Log
+              Save Log Entry
             </button>
           </div>
 

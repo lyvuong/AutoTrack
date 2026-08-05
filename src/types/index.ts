@@ -43,11 +43,20 @@ export type ServiceCategory =
   | 'Scheduled Maintenance'
   | 'General Repair'
   | 'Detailing & Body'
+  | 'Registration'
+  | 'Safety Inspection'
+  | 'Emission Inspection'
+  | 'Property Tax'
+  | 'Insurance'
+  | 'Parking'
+  | 'Traffic Tickets'
+  | 'Tolls'
+  | 'Decal & License'
   | 'Inspection & Registration'
   | 'Fuel Log'
   | 'Other';
 
-export type ServiceType = 'Maintenance' | 'Repair' | 'Upgrade' | 'Inspection';
+export type ServiceType = 'Maintenance' | 'Repair' | 'Upgrade' | 'Inspection' | 'Fee / Tax' | 'Other Expense';
 
 export type PaymentType = 'Cash' | 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Check' | 'Other';
 
@@ -65,6 +74,7 @@ export interface Transaction {
   category: string;
   paymentType: PaymentType;
   user: string;
+  isTaxDeductible?: boolean;
 }
 
 export interface ServiceRecord {
@@ -78,6 +88,7 @@ export interface ServiceRecord {
   createdAt: string;
   loggedBy?: UserAuditInfo;
   lastEditedBy?: UserAuditInfo;
+  isTaxDeductible?: boolean;
 }
 
 // Read-side join of a ServiceRecord with its linked Transaction. Never
@@ -90,6 +101,7 @@ export interface EnrichedServiceRecord extends ServiceRecord {
   provider: string;
   notes?: string;
   paymentType: PaymentType;
+  isTaxDeductible?: boolean;
 }
 
 export interface ServiceReminder {

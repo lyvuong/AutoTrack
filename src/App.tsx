@@ -429,7 +429,8 @@ export const App: React.FC = () => {
           cost: t.amount,
           provider: t.vendor,
           notes: t.notes,
-          paymentType: t.paymentType
+          paymentType: t.paymentType,
+          isTaxDeductible: r.isTaxDeductible !== undefined ? r.isTaxDeductible : t.isTaxDeductible
         };
       })
       .filter((r): r is EnrichedServiceRecord => r !== null)
@@ -530,7 +531,8 @@ export const App: React.FC = () => {
       nextServiceDate: recordData.nextServiceDate || undefined,
       createdAt: isEdit ? editingRecord.createdAt : timestamp,
       loggedBy: isEdit ? (editingRecord.loggedBy || auditInfo) : auditInfo,
-      lastEditedBy: auditInfo
+      lastEditedBy: auditInfo,
+      isTaxDeductible: Boolean(recordData.isTaxDeductible)
     };
 
     const newTransaction: Transaction = {
@@ -542,7 +544,8 @@ export const App: React.FC = () => {
       notes: recordData.notes || '',
       category: buildTransactionCategory(category, vehicle),
       paymentType: recordData.paymentType || 'Cash',
-      user: auditInfo?.displayName || 'Car Owner'
+      user: auditInfo?.displayName || 'Car Owner',
+      isTaxDeductible: Boolean(recordData.isTaxDeductible)
     };
 
     setRecords(prev => {

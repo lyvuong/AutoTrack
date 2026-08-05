@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   Edit3, 
   Car,
-  Tag
+  Tag,
+  ReceiptText
 } from 'lucide-react';
 import type { Vehicle, EnrichedServiceRecord, ServiceReminder } from '../../types';
 
@@ -361,10 +362,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         record.type === 'Repair' ? 'bg-red-950 text-red-400 border border-red-800/60' :
                         record.type === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border border-cyan-800/60' :
                         record.type === 'Upgrade' ? 'bg-purple-950 text-purple-400 border border-purple-800/60' :
+                        record.type === 'Fee / Tax' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' :
+                        record.type === 'Inspection' ? 'bg-amber-950 text-amber-400 border border-amber-800/60' :
                         'bg-slate-800 text-slate-300'
                       }`}>
                         {record.type}
                       </span>
+                      {record.isTaxDeductible && (
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-0.5" title="Tax Deductible">
+                          <ReceiptText className="w-3 h-3" />
+                          Tax
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 font-medium">
                       {record.provider || 'Self / DIY'} • {record.mileage.toLocaleString()} mi

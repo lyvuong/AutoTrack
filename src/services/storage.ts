@@ -294,13 +294,14 @@ export const setStoredFamilyCode = (code: string): void => {
 
 export const exportRecordsAsCSV = (records: EnrichedServiceRecord[], vehicles: Vehicle[]): void => {
   const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.year} ${v.make} ${v.model}`]));
-  const headers = ['Vehicle', 'Date', 'Time', 'Category', 'Type', 'Mileage (mi)', 'Cost ($)', 'Payment Type', 'Provider', 'Notes'];
+  const headers = ['Vehicle', 'Date', 'Time', 'Category', 'Type', 'Tax Deductible', 'Mileage (mi)', 'Cost ($)', 'Payment Type', 'Provider', 'Notes'];
   const rows = records.map(r => [
     `"${vehicleMap.get(r.vehicleId) || 'Unknown Vehicle'}"`,
     `"${r.date}"`,
     `"${r.time}"`,
     `"${r.category}"`,
     `"${r.type}"`,
+    `"${r.isTaxDeductible ? 'Yes' : 'No'}"`,
     r.mileage,
     r.cost.toFixed(2),
     `"${r.paymentType}"`,

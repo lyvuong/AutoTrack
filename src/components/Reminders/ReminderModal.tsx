@@ -22,6 +22,15 @@ const CATEGORIES: ServiceCategory[] = [
   'Scheduled Maintenance',
   'General Repair',
   'Detailing & Body',
+  'Registration',
+  'Safety Inspection',
+  'Emission Inspection',
+  'Property Tax',
+  'Insurance',
+  'Parking',
+  'Traffic Tickets',
+  'Tolls',
+  'Decal & License',
   'Inspection & Registration',
   'Other'
 ];
