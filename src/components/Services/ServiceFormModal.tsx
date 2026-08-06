@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Wrench, BellPlus, ReceiptText } from 'lucide-react';
-import type { Vehicle, EnrichedServiceRecord, ServiceCategory, ServiceType, PaymentType } from '../../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Save, Wrench, BellPlus, ReceiptText, Settings2 } from 'lucide-react';
+import type { Vehicle, EnrichedServiceRecord, ServiceCategory, ServiceType, PaymentType, PaymentTypeItem } from '../../types';
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -9,6 +9,8 @@ interface ServiceFormModalProps {
   vehicles: Vehicle[];
   activeVehicleId: string;
   initialRecord?: EnrichedServiceRecord | null;
+  paymentTypes?: PaymentTypeItem[];
+  onManagePaymentTypes?: () => void;
 }
 
 const CATEGORIES: ServiceCategory[] = [
@@ -38,16 +40,23 @@ const CATEGORIES: ServiceCategory[] = [
 
 const TYPES: ServiceType[] = ['Maintenance', 'Repair', 'Upgrade', 'Inspection', 'Fee / Tax', 'Other Expense'];
 
-const PAYMENT_TYPES: PaymentType[] = ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Check', 'Other'];
-
 export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   isOpen,
   onClose,
   onSave,
   vehicles,
   activeVehicleId,
-  initialRecord
+  initialRecord,
+  paymentTypes = [],
+  onManagePaymentTypes
 }) => {
+  const availablePaymentTypes = useMemo(() => {
+    const rawNames = (paymentTypes && paymentTypes.length > 0)
+      ? paymentTypes.map(p => p.name)
+      : ['Cash', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Check', 'Other'];
+    const withoutCash = rawNames.filter(n => n.toLowerCase() !== 'cash');
+    return ['Cash', ...Array.from(new Set(withoutCash))];
+  }, [paymentTypes]);
   const [vehicleId, setVehicleId] = useState(activeVehicleId);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
@@ -267,13 +276,25 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Payment Type *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-300">Payment Type *</label>
+                {onManagePaymentTypes && (
+                  <button
+                    type="button"
+                    onClick={onManagePaymentTypes}
+                    className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5"
+                    title="Manage Payment Types"
+                  >
+                    <Settings2 className="w-3 h-3" /> Manage
+                  </button>
+                )}
+              </div>
               <select
                 value={paymentType}
                 onChange={(e) => setPaymentType(e.target.value as PaymentType)}
                 className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900"
               >
-                {PAYMENT_TYPES.map((p) => (
+                {availablePaymentTypes.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>

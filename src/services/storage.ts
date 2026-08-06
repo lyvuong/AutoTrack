@@ -1,12 +1,21 @@
-import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, FirebaseConfig } from '../types';
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, FirebaseConfig, PaymentTypeItem } from '../types';
 
 const VEHICLES_KEY = 'autotrack_vehicles_v1';
 const RECORDS_KEY = 'autotrack_records_v1';
 const TRANSACTIONS_KEY = 'autotrack_transactions_v1';
 const REMINDERS_KEY = 'autotrack_reminders_v1';
+const PAYMENT_TYPES_KEY = 'autotrack_payment_types_v1';
 const ACTIVE_VEHICLE_KEY = 'autotrack_active_vehicle_id';
 const FIREBASE_CONFIG_KEY = 'autotrack_firebase_config_custom';
 const FAMILY_CODE_KEY = 'autotrack_family_code';
+
+export const INITIAL_PAYMENT_TYPES: PaymentTypeItem[] = [
+  { id: 'pt-1', name: 'Cash', isSystemDefault: true, isDefault: true },
+  { id: 'pt-2', name: 'Credit Card', isSystemDefault: true },
+  { id: 'pt-3', name: 'Debit Card', isSystemDefault: true },
+  { id: 'pt-4', name: 'Bank Transfer', isSystemDefault: true },
+  { id: 'pt-5', name: 'Check', isSystemDefault: true }
+];
 
 export const INITIAL_VEHICLES: Vehicle[] = [
   {
@@ -224,6 +233,29 @@ export const saveLocalReminders = (reminders: ServiceReminder[]): void => {
     localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
   } catch (err) {
     console.error('Failed to save local reminders:', err);
+  }
+};
+
+export const loadLocalPaymentTypes = (): PaymentTypeItem[] => {
+  try {
+    const raw = localStorage.getItem(PAYMENT_TYPES_KEY);
+    if (!raw) {
+      localStorage.setItem(PAYMENT_TYPES_KEY, JSON.stringify(INITIAL_PAYMENT_TYPES));
+      return INITIAL_PAYMENT_TYPES;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PAYMENT_TYPES;
+  } catch (err) {
+    console.error('Failed to load local payment types:', err);
+    return INITIAL_PAYMENT_TYPES;
+  }
+};
+
+export const saveLocalPaymentTypes = (paymentTypes: PaymentTypeItem[]): void => {
+  try {
+    localStorage.setItem(PAYMENT_TYPES_KEY, JSON.stringify(paymentTypes));
+  } catch (err) {
+    console.error('Failed to save local payment types:', err);
   }
 };
 

@@ -58,7 +58,17 @@ export type ServiceCategory =
 
 export type ServiceType = 'Maintenance' | 'Repair' | 'Upgrade' | 'Inspection' | 'Fee / Tax' | 'Other Expense';
 
-export type PaymentType = 'Cash' | 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Check' | 'Other';
+export interface PaymentTypeItem {
+  id: string;
+  name: string;
+  ownerUid?: string;
+  ownerName?: string;
+  isSystemDefault?: boolean;
+  isDefault?: boolean;
+  createdAt?: string;
+}
+
+export type PaymentType = string;
 
 // Generic, app-agnostic ledger entry. Shared across any app on this Firebase
 // project (users/{uid}/transactions or households/{code}/transactions) — not

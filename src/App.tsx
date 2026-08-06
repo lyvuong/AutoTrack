@@ -7,6 +7,7 @@ import { ServiceHistory } from './components/Services/ServiceHistory';
 import { CostAnalytics } from './components/Analytics/CostAnalytics';
 import { ReminderManager } from './components/Reminders/ReminderManager';
 import { SettingsModal } from './components/Settings/SettingsModal';
+import { PaymentTypesModal } from './components/Settings/PaymentTypesModal';
 import { AboutPage } from './components/About/AboutPage';
 import { ServiceFormModal } from './components/Services/ServiceFormModal';
 import { VehicleModal } from './components/Vehicles/VehicleModal';
@@ -14,7 +15,7 @@ import { ReminderModal } from './components/Reminders/ReminderModal';
 import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
 import { LoginScreen } from './components/Auth/LoginScreen';
 
-import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, UserProfile, ActiveTab } from './types';
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, UserProfile, ActiveTab, PaymentTypeItem } from './types';
 import { buildTransactionCategory } from './utils/transactions';
 import {
   loadLocalVehicles,
@@ -25,6 +26,9 @@ import {
   saveLocalTransactions,
   loadLocalReminders,
   saveLocalReminders,
+  loadLocalPaymentTypes,
+  saveLocalPaymentTypes,
+  INITIAL_PAYMENT_TYPES,
   clearDemoData,
   restoreSampleData,
   getActiveVehicleId,
@@ -53,6 +57,8 @@ import {
   deleteFirestoreTransaction,
   saveFirestoreReminder,
   deleteFirestoreReminder,
+  subscribeFirestorePaymentTypes,
+  saveFirestorePaymentType,
   verifyOrCreateHousehold,
   subscribeRTDBVehicles,
   subscribeRTDBRecords,
@@ -71,6 +77,7 @@ export const App: React.FC = () => {
   const [records, setRecords] = useState<ServiceRecord[]>(() => loadLocalRecords());
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadLocalTransactions());
   const [reminders, setReminders] = useState<ServiceReminder[]>(() => loadLocalReminders());
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeItem[]>(() => loadLocalPaymentTypes());
   const [activeVehicleId, setActiveVehicleIdState] = useState<string>(() => getActiveVehicleId());
   const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
 
@@ -113,6 +120,8 @@ export const App: React.FC = () => {
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<ServiceReminder | null>(null);
+
+  const [isPaymentTypesModalOpen, setIsPaymentTypesModalOpen] = useState(false);
 
   // Online / Offline Detection
   useEffect(() => {
@@ -281,6 +290,25 @@ export const App: React.FC = () => {
             }
           });
 
+          let hasSeededPaymentTypes = false;
+          const unSubPaymentTypesFS = subscribeFirestorePaymentTypes(userProfile.uid, familyCode, (cloudTypes) => {
+            if (cloudTypes.length > 0) {
+              hasSeededPaymentTypes = true;
+              setPaymentTypes(cloudTypes);
+              saveLocalPaymentTypes(cloudTypes);
+            } else if (hasSeededPaymentTypes) {
+              setPaymentTypes([]);
+              saveLocalPaymentTypes([]);
+            } else {
+              hasSeededPaymentTypes = true;
+              const localTypes = loadLocalPaymentTypes();
+              const typesToSeed = localTypes.length > 0 ? localTypes : INITIAL_PAYMENT_TYPES;
+              setPaymentTypes(typesToSeed);
+              saveLocalPaymentTypes(typesToSeed);
+              typesToSeed.forEach(pt => saveFirestorePaymentType(userProfile.uid, pt, familyCode));
+            }
+          });
+
           return () => {
             unSubVehiclesFS();
             unSubVehiclesRTDB();
@@ -289,6 +317,7 @@ export const App: React.FC = () => {
             unSubTransactionsFS();
             unSubRemindersFS();
             unSubRemindersRTDB();
+            unSubPaymentTypesFS();
           };
         } else {
           tryAutoSignInGoogle().catch(() => {});
@@ -317,6 +346,12 @@ export const App: React.FC = () => {
   useEffect(() => {
     saveLocalReminders(reminders);
   }, [reminders]);
+
+  useEffect(() => {
+    saveLocalPaymentTypes(paymentTypes);
+  }, [paymentTypes]);
+
+
 
   // Handle vehicle selection safely
   useEffect(() => {
@@ -820,6 +855,8 @@ export const App: React.FC = () => {
             onRefreshData={handleRefreshData}
             onClearDemoData={handleClearDemoData}
             onRestoreSampleData={handleRestoreSampleData}
+            paymentTypesCount={paymentTypes.length}
+            onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
           />
         )}
 
@@ -839,6 +876,8 @@ export const App: React.FC = () => {
         vehicles={vehicles}
         activeVehicleId={activeVehicleId}
         initialRecord={editingRecord}
+        paymentTypes={paymentTypes}
+        onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
       />
 
       <VehicleModal
@@ -854,6 +893,12 @@ export const App: React.FC = () => {
         vehicles={vehicles}
         activeVehicleId={activeVehicleId}
         initialReminder={editingReminder}
+      />
+
+      <PaymentTypesModal
+        isOpen={isPaymentTypesModalOpen}
+        onClose={() => setIsPaymentTypesModalOpen(false)}
+        paymentTypes={paymentTypes}
       />
 
       {/* Navigation Bar */}

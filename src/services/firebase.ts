@@ -25,7 +25,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
 import type { Database } from 'firebase/database';
-import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, Transaction, UserProfile, UserAuditInfo } from '../types';
+import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, Transaction, UserProfile, UserAuditInfo, PaymentTypeItem } from '../types';
 import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode, setStoredFamilyCode } from './storage';
 
 let app: FirebaseApp | null = null;
@@ -598,5 +598,54 @@ export const verifyOrCreateHousehold = async (
       };
     }
     return { success: false, message: err.message || 'Error joining Household Code.' };
+  }
+};
+
+// ==========================================
+// Household / User Payment Types Collection
+// ==========================================
+
+export const subscribeFirestorePaymentTypes = (
+  userId: string,
+  familyCode: string | undefined,
+  callback: (paymentTypes: PaymentTypeItem[]) => void
+) => {
+  if (!db) return () => {};
+  const target = getStorageTarget(userId, familyCode);
+  const q = collection(db, target.root, target.id, 'payment_types');
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as PaymentTypeItem)));
+  }, (error) => {
+    console.error('[Firestore] Payment types sync error:', error);
+  });
+};
+
+export const saveFirestorePaymentType = async (
+  userId: string,
+  paymentType: PaymentTypeItem,
+  familyCode?: string
+): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    const clean = JSON.parse(JSON.stringify(paymentType));
+    await setDoc(doc(db, target.root, target.id, 'payment_types', paymentType.id), clean, { merge: true });
+    console.log(`[Firestore] Payment type saved to ${target.root}/${target.id}:`, paymentType.name);
+  } catch (err) {
+    console.error('[Firestore] Error saving payment type:', err);
+  }
+};
+
+export const deleteFirestorePaymentType = async (
+  userId: string,
+  paymentTypeId: string,
+  familyCode?: string
+): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    await deleteDoc(doc(db, target.root, target.id, 'payment_types', paymentTypeId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting payment type:', err);
   }
 };

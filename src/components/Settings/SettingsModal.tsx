@@ -12,7 +12,9 @@ import {
   ChevronUp,
   Lock,
   Unlock,
-  ShieldAlert
+  ShieldAlert,
+  CreditCard,
+  ChevronRight
 } from 'lucide-react';
 import type { FirebaseConfig, UserProfile } from '../../types';
 import { 
@@ -39,6 +41,8 @@ interface SettingsModalProps {
   onRefreshData: () => void;
   onClearDemoData?: () => void;
   onRestoreSampleData: () => void;
+  paymentTypesCount?: number;
+  onManagePaymentTypes?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -48,7 +52,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSetFamilyCode,
   onRefreshData,
   onClearDemoData,
-  onRestoreSampleData
+  onRestoreSampleData,
+  paymentTypesCount = 0,
+  onManagePaymentTypes
 }) => {
   const [inputFamilyCode, setInputFamilyCode] = useState(familyCode || '');
   const [familyStatusMsg, setFamilyStatusMsg] = useState('');
@@ -245,6 +251,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           )}
         </form>
+      </div>
+
+      {/* Payment Methods Section */}
+      <div className="glass-panel p-6 rounded-3xl space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-lg font-bold text-white">Payment Methods</h2>
+          </div>
+          {onManagePaymentTypes && (
+            <button
+              onClick={onManagePaymentTypes}
+              className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-950/60 border border-indigo-800/80 px-3 py-1.5 rounded-xl transition-all"
+            >
+              Manage Payment Types <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Manage your personal and household payment methods (credit cards, debit cards, cash, etc.) to tag service records.
+        </p>
+
+        <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 flex items-center justify-center font-bold">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-white block">Active Payment Methods</span>
+              <span className="text-xs text-slate-400">{paymentTypesCount} method{paymentTypesCount === 1 ? '' : 's'} configured</span>
+            </div>
+          </div>
+          {onManagePaymentTypes && (
+            <button
+              onClick={onManagePaymentTypes}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+            >
+              Manage
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 3. Data Portability & Local Backups */}
