@@ -273,8 +273,11 @@ Every service log is split across two linked Firestore documents that share the 
   | `category` | `string` | Free-form; AutoTrack auto-fills `"Car - {ServiceCategory} - {year} - {make} {model}"` |
   | `paymentType` | `'Cash' \| 'Credit Card' \| 'Debit Card' \| 'Bank Transfer' \| 'Check' \| 'Other'` | |
   | `user` | `string` | Display name of whoever logged it |
+  | `isTaxDeductible` | `boolean?` | Marks the expense as tax-deductible (auto-set for Registration, Property Tax, and Inspection & Registration) |
 
 Any other app sharing this Firebase project can read/write `transactions` under the same user/household scope without needing to understand vehicles, mileage, or service categories — it's a plain financial ledger. AutoTrack itself joins `records` + `transactions` client-side (matching by shared document ID) to reconstruct the full service log for display.
+
+AutoTrack's vehicle service records (in `records`) and HomeTracker's maintenance records (in `homeRecords`) both join against the same `transactions` collection by shared document ID — so a household's Cost Analytics in either app is reading from one combined ledger without any schema changes.
 
 ---
 
