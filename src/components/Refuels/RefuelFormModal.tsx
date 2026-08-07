@@ -14,7 +14,7 @@ interface RefuelFormModalProps {
   onManagePaymentTypes?: () => void;
 }
 
-const COMMON_STATIONS = ['Costco Fuel', 'Shell', 'Chevron', 'ExxonMobil', 'BP', 'Mobil', 'Speedway', 'Sunoco', 'Texaco', "Buc-ee's", 'Liberty'];
+const COMMON_STATIONS = ['Costco Fuel',  'Liberty', 'Sunoco', 'BP', 'Shell', 'Chevron', 'ExxonMobil', 'Mobil', 'Speedway', 'Texaco', "Buc-ee's"];
 
 export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
   isOpen,
