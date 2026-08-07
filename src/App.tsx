@@ -630,7 +630,11 @@ export const App: React.FC = () => {
   // Handlers for Service Records
   const handleSaveRecord = (recordData: Partial<EnrichedServiceRecord>) => {
     if (!activeVehicleId) return;
-    const vehicle = vehicles.find(v => v.id === activeVehicleId);
+    // The form's "Target Vehicle" selector lets a record be (re)assigned to
+    // any vehicle, not just the one currently active in the app — always
+    // defer to it when present so editing a record's vehicle actually moves it.
+    const targetVehicleId = recordData.vehicleId || activeVehicleId;
+    const vehicle = vehicles.find(v => v.id === targetVehicleId);
     if (!vehicle) return;
 
     const isEdit = !!editingRecord;
@@ -647,7 +651,7 @@ export const App: React.FC = () => {
 
     const newRecord: ServiceRecord = {
       id: recordId,
-      vehicleId: activeVehicleId,
+      vehicleId: targetVehicleId,
       mileage: Number(recordData.mileage) || 0,
       category,
       type: recordData.type || 'Maintenance',
@@ -688,14 +692,14 @@ export const App: React.FC = () => {
       return [newTransaction, ...prev];
     });
 
-    if (activeVehicle && newRecord.mileage > activeVehicle.currentMileage) {
+    if (newRecord.mileage > vehicle.currentMileage) {
       const updatedVeh = {
-        ...activeVehicle,
+        ...vehicle,
         currentMileage: newRecord.mileage,
         updatedAt: timestamp,
         lastEditedBy: auditInfo
       };
-      setVehicles(prev => prev.map(v => v.id === activeVehicle.id ? updatedVeh : v));
+      setVehicles(prev => prev.map(v => v.id === vehicle.id ? updatedVeh : v));
       if (user && isFirebaseActive) {
         saveFirestoreVehicle(user.uid, updatedVeh, familyCode);
         saveRTDBVehicle(user.uid, updatedVeh, familyCode);
