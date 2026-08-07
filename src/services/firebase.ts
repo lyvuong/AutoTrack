@@ -25,7 +25,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, ref, set, remove, onValue } from 'firebase/database';
 import type { Database } from 'firebase/database';
-import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, Transaction, UserProfile, UserAuditInfo, PaymentTypeItem } from '../types';
+import type { FirebaseConfig, Vehicle, ServiceRecord, ServiceReminder, Transaction, UserProfile, UserAuditInfo, PaymentTypeItem, RefuelRecord } from '../types';
 import { getStoredFirebaseConfig, setStoredFirebaseConfig, getStoredFamilyCode, setStoredFamilyCode } from './storage';
 
 let app: FirebaseApp | null = null;
@@ -302,6 +302,53 @@ export const overwriteFirestoreRecord = async (userId: string, record: ServiceRe
   }
 };
 
+export const subscribeFirestoreRefuels = (
+  userId: string,
+  familyCodeOrCb?: string | ((records: RefuelRecord[]) => void),
+  callback?: (records: RefuelRecord[]) => void
+) => {
+  if (!db) return () => {};
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
+  const q = query(collection(db, target.root, target.id, 'refuels'));
+  return onSnapshot(q, (snapshot) => {
+    const records: RefuelRecord[] = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    } as RefuelRecord));
+    if (cb) cb(records);
+  }, (error) => {
+    console.error('[Firestore] Refuels sync error:', error);
+    if (error.code === 'permission-denied' || error.message?.includes('permission-denied')) {
+      setStoredFamilyCode('');
+    }
+  });
+};
+
+export const saveFirestoreRefuel = async (userId: string, record: RefuelRecord, familyCode?: string): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    const cleanRecord = JSON.parse(JSON.stringify(record));
+    const docRef = doc(db, target.root, target.id, 'refuels', record.id);
+    await setDoc(docRef, cleanRecord, { merge: true });
+    console.log(`[Firestore] Refuel saved successfully to ${target.root}/${target.id}:`, record.id);
+  } catch (err) {
+    console.error('[Firestore] Error saving refuel:', err);
+  }
+};
+
+export const deleteFirestoreRefuel = async (userId: string, recordId: string, familyCode?: string): Promise<void> => {
+  if (!db) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    await deleteDoc(doc(db, target.root, target.id, 'refuels', recordId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting refuel:', err);
+  }
+};
+
 // ==========================================
 // Generic Transactions Ledger (Firestore only)
 // Shared, app-agnostic collection: any future app on this Firebase project
@@ -486,6 +533,52 @@ export const deleteRTDBRecord = async (userId: string, recordId: string, familyC
     await remove(ref(rtdb, `${target.root}/${target.id}/records/${recordId}`));
   } catch (err) {
     console.error('[RTDB] Error deleting record:', err);
+  }
+};
+
+export const subscribeRTDBRefuels = (
+  userId: string,
+  familyCodeOrCb?: string | ((records: RefuelRecord[]) => void),
+  callback?: (records: RefuelRecord[]) => void
+) => {
+  if (!rtdb) return () => {};
+  const cb = typeof familyCodeOrCb === 'function' ? familyCodeOrCb : callback!;
+  const code = typeof familyCodeOrCb === 'string' ? familyCodeOrCb : undefined;
+  const target = getStorageTarget(userId, code);
+  const rRef = ref(rtdb, `${target.root}/${target.id}/refuels`);
+  return onValue(rRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val) {
+      if (cb) cb([]);
+      return;
+    }
+    const recordsList: RefuelRecord[] = Object.values(val);
+    recordsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (cb) cb(recordsList);
+  }, (err) => {
+    console.error('[RTDB] Refuels sync error:', err);
+  });
+};
+
+export const saveRTDBRefuel = async (userId: string, record: RefuelRecord, familyCode?: string): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    const cleanRecord = JSON.parse(JSON.stringify(record));
+    await set(ref(rtdb, `${target.root}/${target.id}/refuels/${record.id}`), cleanRecord);
+    console.log(`[RTDB] Refuel saved successfully to ${target.root}/${target.id}:`, record.id);
+  } catch (err) {
+    console.error('[RTDB] Error saving refuel:', err);
+  }
+};
+
+export const deleteRTDBRefuel = async (userId: string, recordId: string, familyCode?: string): Promise<void> => {
+  if (!rtdb) return;
+  try {
+    const target = getStorageTarget(userId, familyCode);
+    await remove(ref(rtdb, `${target.root}/${target.id}/refuels/${recordId}`));
+  } catch (err) {
+    console.error('[RTDB] Error deleting refuel:', err);
   }
 };
 

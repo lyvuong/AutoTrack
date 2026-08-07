@@ -4,6 +4,8 @@ import { TabNavigation } from './components/Navigation/TabNavigation';
 import { DashboardOverview } from './components/Dashboard/DashboardOverview';
 import { VehicleGarage } from './components/Vehicles/VehicleGarage';
 import { ServiceHistory } from './components/Services/ServiceHistory';
+import { RefuelHistory } from './components/Refuels/RefuelHistory';
+import { RefuelFormModal } from './components/Refuels/RefuelFormModal';
 import { CostAnalytics } from './components/Analytics/CostAnalytics';
 import { ReminderManager } from './components/Reminders/ReminderManager';
 import { SettingsModal } from './components/Settings/SettingsModal';
@@ -15,8 +17,8 @@ import { ReminderModal } from './components/Reminders/ReminderModal';
 import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
 import { LoginScreen } from './components/Auth/LoginScreen';
 
-import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, UserProfile, ActiveTab, PaymentTypeItem } from './types';
-import { buildTransactionCategory } from './utils/transactions';
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, RefuelRecord, EnrichedRefuelRecord, UserProfile, ActiveTab, PaymentTypeItem } from './types';
+import { buildTransactionCategory, buildFuelTransactionCategory } from './utils/transactions';
 import {
   loadLocalVehicles,
   saveLocalVehicles,
@@ -28,6 +30,8 @@ import {
   saveLocalReminders,
   loadLocalPaymentTypes,
   saveLocalPaymentTypes,
+  loadLocalRefuels,
+  saveLocalRefuels,
   INITIAL_PAYMENT_TYPES,
   clearDemoData,
   restoreSampleData,
@@ -60,15 +64,21 @@ import {
   subscribeFirestorePaymentTypes,
   saveFirestorePaymentType,
   verifyOrCreateHousehold,
+  subscribeFirestoreRefuels,
+  saveFirestoreRefuel,
+  deleteFirestoreRefuel,
   subscribeRTDBVehicles,
   subscribeRTDBRecords,
   subscribeRTDBReminders,
+  subscribeRTDBRefuels,
   saveRTDBVehicle,
   deleteRTDBVehicle,
   saveRTDBRecord,
   deleteRTDBRecord,
   saveRTDBReminder,
-  deleteRTDBReminder
+  deleteRTDBReminder,
+  saveRTDBRefuel,
+  deleteRTDBRefuel
 } from './services/firebase';
 
 export const App: React.FC = () => {
@@ -78,6 +88,7 @@ export const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadLocalTransactions());
   const [reminders, setReminders] = useState<ServiceReminder[]>(() => loadLocalReminders());
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeItem[]>(() => loadLocalPaymentTypes());
+  const [refuelRecords, setRefuelRecords] = useState<RefuelRecord[]>(() => loadLocalRefuels());
   const [activeVehicleId, setActiveVehicleIdState] = useState<string>(() => getActiveVehicleId());
   const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
 
@@ -122,6 +133,9 @@ export const App: React.FC = () => {
   const [editingReminder, setEditingReminder] = useState<ServiceReminder | null>(null);
 
   const [isPaymentTypesModalOpen, setIsPaymentTypesModalOpen] = useState(false);
+
+  const [isRefuelModalOpen, setIsRefuelModalOpen] = useState(false);
+  const [editingRefuelRecord, setEditingRefuelRecord] = useState<EnrichedRefuelRecord | null>(null);
 
   // Online / Offline Detection
   useEffect(() => {
@@ -233,6 +247,42 @@ export const App: React.FC = () => {
             }
           });
 
+          let hasSeededRefuels = false;
+          const unSubRefuelsFS = subscribeFirestoreRefuels(userProfile.uid, familyCode, (cloudRefuels) => {
+            if (cloudRefuels.length > 0) {
+              hasSeededRefuels = true;
+              setRefuelRecords(cloudRefuels);
+              saveLocalRefuels(cloudRefuels);
+            } else if (hasSeededRefuels) {
+              setRefuelRecords([]);
+              saveLocalRefuels([]);
+            } else {
+              hasSeededRefuels = true;
+              const local = loadLocalRefuels().filter((r: RefuelRecord) => !r.id.startsWith('refuel-') && !r.vehicleId.startsWith('demo-'));
+              if (local.length > 0) {
+                setRefuelRecords(local);
+                local.forEach((r: RefuelRecord) => {
+                  saveFirestoreRefuel(userProfile.uid, r, familyCode);
+                  saveRTDBRefuel(userProfile.uid, r, familyCode);
+                });
+              } else {
+                setRefuelRecords([]);
+                saveLocalRefuels([]);
+              }
+            }
+          });
+
+          const unSubRefuelsRTDB = subscribeRTDBRefuels(userProfile.uid, familyCode, (rtdbRefuels) => {
+            if (rtdbRefuels.length > 0) {
+              hasSeededRefuels = true;
+              setRefuelRecords(rtdbRefuels);
+              saveLocalRefuels(rtdbRefuels);
+            } else if (hasSeededRefuels) {
+              setRefuelRecords([]);
+              saveLocalRefuels([]);
+            }
+          });
+
           let hasSeededTransactions = false;
           const unSubTransactionsFS = subscribeFirestoreTransactions(userProfile.uid, familyCode, (cloudTransactions) => {
             if (cloudTransactions.length > 0) {
@@ -314,6 +364,8 @@ export const App: React.FC = () => {
             unSubVehiclesRTDB();
             unSubRecordsFS();
             unSubRecordsRTDB();
+            unSubRefuelsFS();
+            unSubRefuelsRTDB();
             unSubTransactionsFS();
             unSubRemindersFS();
             unSubRemindersRTDB();
@@ -350,6 +402,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     saveLocalPaymentTypes(paymentTypes);
   }, [paymentTypes]);
+
+  useEffect(() => {
+    saveLocalRefuels(refuelRecords);
+  }, [refuelRecords]);
 
 
 
@@ -472,6 +528,32 @@ export const App: React.FC = () => {
       .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
   }, [records, transactions]);
 
+  // Join refuel records with their linked transaction, same pattern as
+  // enrichedRecords. MPG is computed downstream (Dashboard/RefuelHistory)
+  // scoped to a single vehicle — mixing vehicles here would corrupt the
+  // full-tank interval detection in calculateVehicleMpgStats.
+  const enrichedRefuelRecords: EnrichedRefuelRecord[] = useMemo(() => {
+    const transactionsById = new Map(transactions.map(t => [t.id, t]));
+    return refuelRecords
+      .map((r): EnrichedRefuelRecord | null => {
+        const t = transactionsById.get(r.id);
+        if (!t) return null;
+        return {
+          ...r,
+          date: t.date,
+          time: t.time,
+          amountPaid: t.amount,
+          vendor: t.vendor,
+          notes: t.notes,
+          paymentType: t.paymentType,
+          category: t.category,
+          pricePerGallon: r.gallons > 0 ? t.amount / r.gallons : 0
+        };
+      })
+      .filter((r): r is EnrichedRefuelRecord => r !== null)
+      .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  }, [refuelRecords, transactions]);
+
   // Handlers for Vehicles
   const handleSaveVehicle = (vehicleData: Omit<Vehicle, 'createdAt' | 'updatedAt'>) => {
     const isEdit = vehicles.some(v => v.id === vehicleData.id);
@@ -514,10 +596,12 @@ export const App: React.FC = () => {
   const handleDeleteVehicle = (id: string) => {
     if (!confirm('Are you sure you want to delete this vehicle and all associated service records?')) return;
     const removedRecordIds = records.filter(r => r.vehicleId === id).map(r => r.id);
+    const removedRefuelIds = refuelRecords.filter(r => r.vehicleId === id).map(r => r.id);
 
     setVehicles(prev => prev.filter(v => v.id !== id));
     setRecords(prev => prev.filter(r => r.vehicleId !== id));
-    setTransactions(prev => prev.filter(t => !removedRecordIds.includes(t.id)));
+    setRefuelRecords(prev => prev.filter(r => r.vehicleId !== id));
+    setTransactions(prev => prev.filter(t => !removedRecordIds.includes(t.id) && !removedRefuelIds.includes(t.id)));
     setReminders(prev => prev.filter(rem => rem.vehicleId !== id));
 
     if (activeVehicleId === id) {
@@ -534,6 +618,11 @@ export const App: React.FC = () => {
         deleteFirestoreRecord(user.uid, recordId, familyCode);
         deleteRTDBRecord(user.uid, recordId, familyCode);
         deleteFirestoreTransaction(user.uid, recordId, familyCode);
+      });
+      removedRefuelIds.forEach(refuelId => {
+        deleteFirestoreRefuel(user.uid, refuelId, familyCode);
+        deleteRTDBRefuel(user.uid, refuelId, familyCode);
+        deleteFirestoreTransaction(user.uid, refuelId, familyCode);
       });
     }
   };
@@ -634,6 +723,97 @@ export const App: React.FC = () => {
     }
   };
 
+  // Handlers for Refuel Records
+  const handleSaveRefuelRecord = (recordData: Partial<EnrichedRefuelRecord>) => {
+    const vehicleId = recordData.vehicleId || activeVehicleId;
+    if (!vehicleId) return;
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return;
+
+    const isEdit = !!editingRefuelRecord;
+    const recordId = editingRefuelRecord ? editingRefuelRecord.id : `refuel-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    const auditInfo = user ? {
+      uid: user.uid,
+      displayName: user.displayName || 'Car Owner',
+      email: user.email || undefined
+    } : undefined;
+
+    const newRefuel: RefuelRecord = {
+      id: recordId,
+      vehicleId,
+      odometer: Number(recordData.odometer) || 0,
+      isFullTank: Boolean(recordData.isFullTank),
+      gallons: Number(recordData.gallons) || 0,
+      createdAt: isEdit ? editingRefuelRecord.createdAt : timestamp,
+      loggedBy: isEdit ? (editingRefuelRecord.loggedBy || auditInfo) : auditInfo,
+      lastEditedBy: auditInfo
+    };
+
+    const newTransaction: Transaction = {
+      id: recordId,
+      date: recordData.date || new Date().toISOString().split('T')[0],
+      time: recordData.time || new Date().toTimeString().slice(0, 5),
+      amount: Number(recordData.amountPaid) || 0,
+      vendor: recordData.vendor || 'Gas Station',
+      notes: recordData.notes || '',
+      category: buildFuelTransactionCategory(vehicle),
+      paymentType: recordData.paymentType || 'Cash',
+      user: auditInfo?.displayName || 'Car Owner'
+    };
+
+    setRefuelRecords(prev => {
+      const exists = prev.some(r => r.id === recordId);
+      if (exists) {
+        return prev.map(r => r.id === recordId ? newRefuel : r);
+      }
+      return [newRefuel, ...prev];
+    });
+
+    setTransactions(prev => {
+      const exists = prev.some(t => t.id === recordId);
+      if (exists) {
+        return prev.map(t => t.id === recordId ? newTransaction : t);
+      }
+      return [newTransaction, ...prev];
+    });
+
+    if (newRefuel.odometer > vehicle.currentMileage) {
+      const updatedVeh = {
+        ...vehicle,
+        currentMileage: newRefuel.odometer,
+        updatedAt: timestamp,
+        lastEditedBy: auditInfo
+      };
+      setVehicles(prev => prev.map(v => v.id === vehicle.id ? updatedVeh : v));
+      if (user && isFirebaseActive) {
+        saveFirestoreVehicle(user.uid, updatedVeh, familyCode);
+        saveRTDBVehicle(user.uid, updatedVeh, familyCode);
+      }
+    }
+
+    setIsRefuelModalOpen(false);
+    setEditingRefuelRecord(null);
+
+    if (user && isFirebaseActive) {
+      saveFirestoreRefuel(user.uid, newRefuel, familyCode);
+      saveRTDBRefuel(user.uid, newRefuel, familyCode);
+      saveFirestoreTransaction(user.uid, newTransaction, familyCode);
+    }
+  };
+
+  const handleDeleteRefuelRecord = (id: string) => {
+    if (!confirm('Delete this refuel log?')) return;
+    setRefuelRecords(prev => prev.filter(r => r.id !== id));
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    if (user && isFirebaseActive) {
+      deleteFirestoreRefuel(user.uid, id, familyCode);
+      deleteRTDBRefuel(user.uid, id, familyCode);
+      deleteFirestoreTransaction(user.uid, id, familyCode);
+    }
+  };
+
   // Handlers for Service Reminders
   const handleSaveReminder = (reminderData: ServiceReminder) => {
     const isEdit = reminders.some(rem => rem.id === reminderData.id);
@@ -706,6 +886,7 @@ export const App: React.FC = () => {
     setRecords(loadLocalRecords());
     setTransactions(loadLocalTransactions());
     setReminders(loadLocalReminders());
+    setRefuelRecords(loadLocalRefuels());
   };
 
   const handleClearDemoData = () => {
@@ -714,6 +895,7 @@ export const App: React.FC = () => {
     setRecords([]);
     setTransactions([]);
     setReminders([]);
+    setRefuelRecords([]);
   };
 
   const handleRestoreSampleData = () => {
@@ -723,6 +905,7 @@ export const App: React.FC = () => {
     setRecords(loadLocalRecords());
     setTransactions(loadLocalTransactions());
     setReminders(loadLocalReminders());
+    setRefuelRecords(loadLocalRefuels());
     if (freshVehicles.length > 0) {
       handleSelectVehicle(freshVehicles[0].id);
     }
@@ -762,6 +945,10 @@ export const App: React.FC = () => {
           setEditingRecord(null);
           setIsServiceModalOpen(true);
         }}
+        onOpenAddRefuel={() => {
+          setEditingRefuelRecord(null);
+          setIsRefuelModalOpen(true);
+        }}
         onOpenAddVehicle={() => {
           setIsVehicleModalOpen(true);
         }}
@@ -781,6 +968,7 @@ export const App: React.FC = () => {
           <DashboardOverview
             activeVehicle={activeVehicle}
             records={enrichedRecords}
+            refuelRecords={enrichedRefuelRecords}
             reminders={reminders}
             onOpenAddService={() => {
               setEditingRecord(null);
@@ -806,6 +994,24 @@ export const App: React.FC = () => {
             onSaveVehicle={handleSaveVehicle}
             onDeleteVehicle={handleDeleteVehicle}
             onOpenSettings={() => setActiveTab('settings')}
+          />
+        )}
+
+        {activeTab === 'refuels' && (
+          <RefuelHistory
+            records={enrichedRefuelRecords}
+            vehicles={vehicles}
+            activeVehicleId={activeVehicleId}
+            onSelectVehicle={handleSelectVehicle}
+            onOpenAddService={() => {
+              setEditingRefuelRecord(null);
+              setIsRefuelModalOpen(true);
+            }}
+            onEditRecord={(rec: EnrichedRefuelRecord) => {
+              setEditingRefuelRecord(rec);
+              setIsRefuelModalOpen(true);
+            }}
+            onDeleteRecord={handleDeleteRefuelRecord}
           />
         )}
 
@@ -843,6 +1049,7 @@ export const App: React.FC = () => {
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
             records={enrichedRecords}
+            refuelRecords={enrichedRefuelRecords}
           />
         )}
 
@@ -876,6 +1083,17 @@ export const App: React.FC = () => {
         vehicles={vehicles}
         activeVehicleId={activeVehicleId}
         initialRecord={editingRecord}
+        paymentTypes={paymentTypes}
+        onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
+      />
+
+      <RefuelFormModal
+        isOpen={isRefuelModalOpen}
+        onClose={() => setIsRefuelModalOpen(false)}
+        onSave={handleSaveRefuelRecord}
+        vehicles={vehicles}
+        activeVehicleId={activeVehicleId}
+        initialRecord={editingRefuelRecord}
         paymentTypes={paymentTypes}
         onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
       />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Car, History, Bell, BarChart3, Settings, Info } from 'lucide-react';
+import { LayoutDashboard, Car, Fuel, History, Bell, BarChart3, Settings, Info } from 'lucide-react';
 import type { ActiveTab } from '../../types';
 
 interface TabNavigationProps {
@@ -26,6 +26,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'vehicles', label: 'Garage', icon: Car },
+    { id: 'refuels', label: 'Refuels', icon: Fuel },
     { id: 'history', label: 'Service History', icon: History },
     { 
       id: 'reminders', 

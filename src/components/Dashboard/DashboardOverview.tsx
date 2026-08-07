@@ -1,24 +1,31 @@
-import React, { useState } from 'react';
-import { 
-  DollarSign, 
-  Gauge, 
-  Wrench, 
-  AlertTriangle, 
-  PlusCircle, 
-  Calendar, 
-  ChevronRight, 
-  TrendingUp, 
+import React, { useState, useMemo } from 'react';
+import {
+  DollarSign,
+  Gauge,
+  Wrench,
+  AlertTriangle,
+  PlusCircle,
+  Calendar,
+  ChevronRight,
+  TrendingUp,
   ShieldCheck,
-  Edit3, 
+  Edit3,
   Car,
   Tag,
-  ReceiptText
+  ReceiptText,
+  Fuel,
+  Zap,
+  CheckCircle2,
+  Flame
 } from 'lucide-react';
-import type { Vehicle, EnrichedServiceRecord, ServiceReminder } from '../../types';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import type { Vehicle, EnrichedServiceRecord, EnrichedRefuelRecord, ServiceReminder } from '../../types';
+import { calculateVehicleMpgStats } from '../../utils/mpg';
 
 interface DashboardOverviewProps {
   activeVehicle: Vehicle | null;
   records: EnrichedServiceRecord[];
+  refuelRecords: EnrichedRefuelRecord[];
   reminders: ServiceReminder[];
   onOpenAddService: () => void;
   onOpenAddVehicle: () => void;
@@ -30,6 +37,7 @@ interface DashboardOverviewProps {
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   activeVehicle,
   records,
+  refuelRecords,
   reminders,
   onOpenAddService,
   onOpenAddVehicle,
@@ -39,6 +47,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const [isEditingMileage, setIsEditingMileage] = useState(false);
   const [mileageInput, setMileageInput] = useState(activeVehicle?.currentMileage?.toString() || '');
+
+  const vehicleRefuelRecords = useMemo(
+    () => activeVehicle ? refuelRecords.filter(r => r.vehicleId === activeVehicle.id) : [],
+    [refuelRecords, activeVehicle]
+  );
+  const mpgStats = useMemo(() => calculateVehicleMpgStats(vehicleRefuelRecords), [vehicleRefuelRecords]);
+  const mpgChartData = useMemo(() => mpgStats.recordsWithMpg
+    .filter(r => r.calculatedMpg !== undefined && r.calculatedMpg !== null)
+    .map(r => ({ date: r.date.slice(5), mpg: r.calculatedMpg, station: r.vendor, odometer: r.odometer }))
+    .reverse(), [mpgStats]);
 
   if (!activeVehicle) {
     return (
@@ -278,6 +296,86 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </button>
         </div>
 
+      </div>
+
+      {/* Fuel Economy Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Recent MPG</span>
+            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+              <Zap className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1">
+            <span>{mpgStats.recentMpg !== null ? mpgStats.recentMpg.toFixed(1) : 'N/A'}</span>
+            <span className="text-xs text-emerald-400 font-semibold">MPG</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            {mpgStats.recentMpg !== null ? 'Miles / gallons on last full refueling' : 'Requires 2+ full refuelings'}
+          </p>
+        </div>
+
+        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-cyan-500/40 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Average MPG</span>
+            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-1">
+            <span>{mpgStats.averageMpg !== null ? mpgStats.averageMpg.toFixed(1) : 'N/A'}</span>
+            <span className="text-xs text-cyan-400 font-semibold">MPG</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            {mpgStats.averageMpg !== null ? 'Average across all full refueling intervals' : 'Log full refuels to compute overall average'}
+          </p>
+        </div>
+      </div>
+
+      {/* MPG Trend Chart */}
+      <div className="glass-panel p-6 rounded-2xl">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Fuel className="w-4 h-4 text-emerald-400" />
+            Fuel Efficiency Trend (MPG)
+          </h2>
+          <p className="text-xs text-slate-400">Calculated miles per gallon for full refuelings of {activeVehicle.make} {activeVehicle.model}</p>
+        </div>
+
+        {mpgChartData.length >= 2 ? (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mpgChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
+                <YAxis stroke="#94a3b8" fontSize={11} domain={['auto', 'auto']} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                  formatter={(value: any) => [`${value} MPG`, 'Efficiency']}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="mpg"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  dot={{ fill: '#10b981', r: 5 }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-950/40 rounded-xl border border-slate-800/60">
+            <Flame className="w-10 h-10 text-slate-600 mb-2" />
+            <p className="text-sm font-medium text-slate-300">Not Enough Data for Efficiency Chart</p>
+            <p className="text-xs text-slate-500 max-w-xs mt-1">
+              Log at least 2 full refuelings for {activeVehicle.make} {activeVehicle.model} to plot fuel economy trends.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions Panel */}

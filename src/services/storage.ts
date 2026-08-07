@@ -1,10 +1,11 @@
-import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, FirebaseConfig, PaymentTypeItem } from '../types';
+import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, FirebaseConfig, PaymentTypeItem, RefuelRecord, EnrichedRefuelRecord } from '../types';
 
 const VEHICLES_KEY = 'autotrack_vehicles_v1';
 const RECORDS_KEY = 'autotrack_records_v1';
 const TRANSACTIONS_KEY = 'autotrack_transactions_v1';
 const REMINDERS_KEY = 'autotrack_reminders_v1';
 const PAYMENT_TYPES_KEY = 'autotrack_payment_types_v1';
+const REFUELS_KEY = 'autotrack_refuels_v1';
 const ACTIVE_VEHICLE_KEY = 'autotrack_active_vehicle_id';
 const FIREBASE_CONFIG_KEY = 'autotrack_firebase_config_custom';
 const FAMILY_CODE_KEY = 'autotrack_family_code';
@@ -259,16 +260,36 @@ export const saveLocalPaymentTypes = (paymentTypes: PaymentTypeItem[]): void => 
   }
 };
 
+export const loadLocalRefuels = (): RefuelRecord[] => {
+  try {
+    const raw = localStorage.getItem(REFUELS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.error('Failed to load local refuels:', err);
+    return [];
+  }
+};
+
+export const saveLocalRefuels = (records: RefuelRecord[]): void => {
+  try {
+    localStorage.setItem(REFUELS_KEY, JSON.stringify(records));
+  } catch (err) {
+    console.error('Failed to save local refuels:', err);
+  }
+};
+
 export const clearDemoData = (): void => {
   try {
     const vehicles = loadLocalVehicles().filter(v => !v.id.startsWith('demo-'));
     const records = loadLocalRecords().filter(r => !r.id.startsWith('rec-') && !r.vehicleId.startsWith('demo-'));
-    const transactions = loadLocalTransactions().filter(t => !t.id.startsWith('rec-'));
+    const transactions = loadLocalTransactions().filter(t => !t.id.startsWith('rec-') && !t.id.startsWith('refuel-'));
     const reminders = loadLocalReminders().filter(rem => !rem.id.startsWith('rem-') && !rem.vehicleId.startsWith('demo-'));
+    const refuels = loadLocalRefuels().filter(r => !r.id.startsWith('refuel-') && !r.vehicleId.startsWith('demo-'));
     saveLocalVehicles(vehicles);
     saveLocalRecords(records);
     saveLocalTransactions(transactions);
     saveLocalReminders(reminders);
+    saveLocalRefuels(refuels);
   } catch (err) {
     console.error('Failed to clear demo data:', err);
   }
@@ -281,6 +302,7 @@ export const restoreSampleData = (): void => {
   saveLocalRecords(INITIAL_RECORDS);
   saveLocalTransactions(INITIAL_TRANSACTIONS);
   saveLocalReminders(INITIAL_REMINDERS);
+  saveLocalRefuels([]);
 };
 
 export const getStoredFirebaseConfig = (): FirebaseConfig | null => {
@@ -356,7 +378,8 @@ export const exportDataAsJSON = (
   vehicles: Vehicle[],
   records: ServiceRecord[],
   reminders: ServiceReminder[],
-  transactions: Transaction[]
+  transactions: Transaction[],
+  refuels: RefuelRecord[] = []
 ): void => {
   const backupObj = {
     version: '2.0',
@@ -364,7 +387,8 @@ export const exportDataAsJSON = (
     vehicles,
     records,
     transactions,
-    reminders
+    reminders,
+    refuels
   };
   const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -376,7 +400,7 @@ export const exportDataAsJSON = (
   document.body.removeChild(link);
 };
 
-export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; records: ServiceRecord[]; reminders: ServiceReminder[]; transactions: Transaction[] } => {
+export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; records: ServiceRecord[]; reminders: ServiceReminder[]; transactions: Transaction[]; refuels: RefuelRecord[] } => {
   try {
     const data = JSON.parse(jsonString);
     if (!data.vehicles || !Array.isArray(data.vehicles)) {
@@ -386,14 +410,45 @@ export const importJSONBackup = (jsonString: string): { vehicles: Vehicle[]; rec
     const records: ServiceRecord[] = data.records || [];
     const reminders: ServiceReminder[] = data.reminders || [];
     const transactions: Transaction[] = data.transactions || [];
+    const refuels: RefuelRecord[] = data.refuels || [];
 
     saveLocalVehicles(vehicles);
     saveLocalRecords(records);
     saveLocalTransactions(transactions);
     saveLocalReminders(reminders);
+    saveLocalRefuels(refuels);
 
-    return { vehicles, records, reminders, transactions };
+    return { vehicles, records, reminders, transactions, refuels };
   } catch (err: any) {
     throw new Error(err.message || 'Failed to parse JSON backup file.');
   }
+};
+
+export const exportRefuelRecordsAsCSV = (records: EnrichedRefuelRecord[], vehicles: Vehicle[]): void => {
+  const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.year} ${v.make} ${v.model}`]));
+  const headers = ['Vehicle', 'Date', 'Time', 'Odometer (mi)', 'Gallons', 'Fueling Type', 'Amount Paid ($)', 'Price/Gal ($)', 'Calculated MPG', 'Vendor', 'Payment Type', 'Notes'];
+  const rows = records.map(r => [
+    `"${vehicleMap.get(r.vehicleId) || 'Unknown Vehicle'}"`,
+    `"${r.date}"`,
+    `"${r.time}"`,
+    r.odometer,
+    r.gallons.toFixed(3),
+    `"${r.isFullTank ? 'Full' : 'Partial'}"`,
+    r.amountPaid.toFixed(2),
+    r.pricePerGallon.toFixed(3),
+    r.calculatedMpg != null ? r.calculatedMpg.toFixed(2) : '',
+    `"${(r.vendor || '').replace(/"/g, '""')}"`,
+    `"${r.paymentType}"`,
+    `"${(r.notes || '').replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `AutoTrack_Refuel_History_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };

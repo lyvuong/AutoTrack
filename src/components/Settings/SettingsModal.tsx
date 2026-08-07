@@ -25,7 +25,8 @@ import {
   loadLocalVehicles,
   loadLocalRecords,
   loadLocalReminders,
-  loadLocalTransactions
+  loadLocalTransactions,
+  loadLocalRefuels
 } from '../../services/storage';
 import { 
   initializeFirebaseService, 
@@ -125,7 +126,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleExportJSON = () => {
-    exportDataAsJSON(loadLocalVehicles(), loadLocalRecords(), loadLocalReminders(), loadLocalTransactions());
+    exportDataAsJSON(loadLocalVehicles(), loadLocalRecords(), loadLocalReminders(), loadLocalTransactions(), loadLocalRefuels());
   };
 
   return (

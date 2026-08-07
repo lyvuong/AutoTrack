@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircle, Wifi, WifiOff, Cloud, Database, Settings, Info } from 'lucide-react';
+import { PlusCircle, Fuel, Wifi, WifiOff, Cloud, Database, Settings, Info } from 'lucide-react';
 import type { Vehicle, UserProfile } from '../../types';
 
 interface NavbarProps {
@@ -7,6 +7,7 @@ interface NavbarProps {
   activeVehicleId: string;
   onSelectVehicle: (id: string) => void;
   onOpenAddService?: () => void;
+  onOpenAddRefuel?: () => void;
   onOpenAddVehicle: () => void;
   onOpenSettings: () => void;
   onOpenAbout?: () => void;
@@ -21,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeVehicleId,
   onSelectVehicle,
   onOpenAddService,
+  onOpenAddRefuel,
   onOpenAddVehicle,
   onOpenSettings,
   onOpenAbout,
@@ -112,6 +114,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <PlusCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Log Service</span>
             </button>
+
+            {/* Quick Log Fuel Button */}
+            {onOpenAddRefuel && (
+              <button
+                onClick={onOpenAddRefuel}
+                disabled={vehicles.length === 0}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Fuel className="w-4 h-4" />
+                <span className="hidden sm:inline">Log Fuel</span>
+              </button>
+            )}
 
             {/* About Page Button */}
             {onOpenAbout && (

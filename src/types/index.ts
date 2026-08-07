@@ -114,6 +114,32 @@ export interface EnrichedServiceRecord extends ServiceRecord {
   isTaxDeductible?: boolean;
 }
 
+export interface RefuelRecord {
+  id: string;
+  vehicleId: string;
+  odometer: number;
+  isFullTank: boolean; // true = Full, false = Partial
+  gallons: number;
+  createdAt: string;
+  loggedBy?: UserAuditInfo;
+  lastEditedBy?: UserAuditInfo;
+}
+
+// Read-side join of a RefuelRecord with its linked Transaction, plus the
+// client-computed price-per-gallon and (for full-tank entries that close an
+// interval) calculatedMpg. Never persisted directly.
+export interface EnrichedRefuelRecord extends RefuelRecord {
+  date: string;
+  time: string;
+  amountPaid: number;
+  vendor: string;
+  notes?: string;
+  paymentType: PaymentType;
+  category: string;
+  pricePerGallon: number;
+  calculatedMpg?: number;
+}
+
 export interface ServiceReminder {
   id: string;
   vehicleId: string;
@@ -147,4 +173,4 @@ export interface UserProfile {
   isAnonymous?: boolean;
 }
 
-export type ActiveTab = 'dashboard' | 'vehicles' | 'history' | 'reminders' | 'analytics' | 'settings' | 'about';
+export type ActiveTab = 'dashboard' | 'vehicles' | 'refuels' | 'history' | 'reminders' | 'analytics' | 'settings' | 'about';

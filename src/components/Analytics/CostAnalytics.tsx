@@ -12,14 +12,17 @@ import {
   Cell, 
   Legend 
 } from 'recharts';
-import type { Vehicle, EnrichedServiceRecord } from '../../types';
-import { BarChart3, PieChart as PieIcon, DollarSign, TrendingUp, ReceiptText } from 'lucide-react';
+import type { Vehicle, EnrichedServiceRecord, EnrichedRefuelRecord } from '../../types';
+import { BarChart3, PieChart as PieIcon, DollarSign, TrendingUp, ReceiptText, Fuel } from 'lucide-react';
 
 interface CostAnalyticsProps {
   vehicles: Vehicle[];
   activeVehicleId: string;
   records: EnrichedServiceRecord[];
+  refuelRecords: EnrichedRefuelRecord[];
 }
+
+const STATION_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'];
 
 const CATEGORY_COLORS: Record<string, string> = {
   'Oil Change': '#0284c7',
@@ -58,14 +61,51 @@ const TYPE_COLORS: Record<string, string> = {
 export const CostAnalytics: React.FC<CostAnalyticsProps> = ({
   vehicles,
   activeVehicleId,
-  records
+  records,
+  refuelRecords
 }) => {
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId);
   const filteredRecords = useMemo(() => {
-    return activeVehicleId === 'all' 
-      ? records 
+    return activeVehicleId === 'all'
+      ? records
       : records.filter(r => r.vehicleId === activeVehicleId);
   }, [records, activeVehicleId]);
+
+  const filteredRefuelRecords = useMemo(() => {
+    return activeVehicleId === 'all'
+      ? refuelRecords
+      : refuelRecords.filter(r => r.vehicleId === activeVehicleId);
+  }, [refuelRecords, activeVehicleId]);
+
+  // Aggregate monthly fuel spend
+  const fuelMonthlyData = useMemo(() => {
+    const monthsMap: Record<string, { month: string; cost: number }> = {};
+    const sorted = [...filteredRefuelRecords].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    sorted.forEach(r => {
+      if (!r.date) return;
+      const monthKey = r.date.substring(0, 7);
+      if (!monthsMap[monthKey]) {
+        const dateObj = new Date(r.date + 'T00:00:00');
+        const monthName = dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        monthsMap[monthKey] = { month: monthName, cost: 0 };
+      }
+      monthsMap[monthKey].cost += r.amountPaid;
+    });
+    return Object.values(monthsMap);
+  }, [filteredRefuelRecords]);
+
+  // Aggregate fuel spend by vendor/gas station
+  const fuelVendorData = useMemo(() => {
+    const vendorMap: Record<string, number> = {};
+    filteredRefuelRecords.forEach(r => {
+      vendorMap[r.vendor] = (vendorMap[r.vendor] || 0) + r.amountPaid;
+    });
+    return Object.entries(vendorMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredRefuelRecords]);
+
+  const totalFuelSpent = filteredRefuelRecords.reduce((sum, r) => sum + r.amountPaid, 0);
 
   // Aggregate monthly expenses
   const monthlyData = useMemo(() => {
@@ -248,6 +288,74 @@ export const CostAnalytics: React.FC<CostAnalyticsProps> = ({
               </div>
             </div>
 
+          </div>
+        </>
+      )}
+
+      {/* Fuel Spend Analytics */}
+      {filteredRefuelRecords.length > 0 && (
+        <>
+          <div className="glass-panel p-6 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Fuel className="w-5 h-5 text-emerald-400" />
+                Fuel Spend Analytics
+              </h2>
+              <div className="bg-emerald-950/80 border border-emerald-800/80 px-4 py-2 rounded-xl text-right">
+                <span className="text-[11px] text-emerald-400 block font-bold">Total Fuel Spend</span>
+                <span className="text-lg font-extrabold text-emerald-300 font-mono">
+                  ${totalFuelSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fuelMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <XAxis dataKey="month" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Fuel Cost']}
+                  />
+                  <Bar dataKey="cost" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl">
+            <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+              <PieIcon className="w-5 h-5 text-emerald-400" />
+              Fuel Spend by Gas Station
+            </h2>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={fuelVendorData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={95}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {fuelVendorData.map((entry, idx) => (
+                      <Cell key={entry.name} fill={STATION_COLORS[idx % STATION_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Spent']}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                    formatter={(value) => <span style={{ color: '#cbd5e1' }}>{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </>
       )}
