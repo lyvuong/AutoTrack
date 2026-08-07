@@ -727,6 +727,22 @@ export const App: React.FC = () => {
     }
   };
 
+  // Detaches a record from its vehicle, keeping only the underlying
+  // Transaction (the shared, app-agnostic ledger entry) intact — used when a
+  // logged item turns out not to be a car expense at all. Only the
+  // ServiceRecord is removed; the Transaction document is left alone so it
+  // still shows up wherever the generic transactions collection is consumed.
+  const handleMoveRecordToExpense = (record: EnrichedServiceRecord) => {
+    if (!confirm('Move this log out of the vehicle history and keep it only as a general expense? It will no longer appear on this vehicle.')) return;
+    setRecords(prev => prev.filter(r => r.id !== record.id));
+    setIsServiceModalOpen(false);
+    setEditingRecord(null);
+    if (user && isFirebaseActive) {
+      deleteFirestoreRecord(user.uid, record.id, familyCode);
+      deleteRTDBRecord(user.uid, record.id, familyCode);
+    }
+  };
+
   // Handlers for Refuel Records
   const handleSaveRefuelRecord = (recordData: Partial<EnrichedRefuelRecord>) => {
     const vehicleId = recordData.vehicleId || activeVehicleId;
@@ -1089,6 +1105,7 @@ export const App: React.FC = () => {
         initialRecord={editingRecord}
         paymentTypes={paymentTypes}
         onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
+        onMoveToExpense={handleMoveRecordToExpense}
       />
 
       <RefuelFormModal

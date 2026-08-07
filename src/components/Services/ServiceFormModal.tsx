@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Wrench, BellPlus, ReceiptText, Settings2 } from 'lucide-react';
+import { X, Save, Wrench, BellPlus, ReceiptText, Settings2, Link2Off } from 'lucide-react';
 import type { Vehicle, EnrichedServiceRecord, ServiceCategory, ServiceType, PaymentType, PaymentTypeItem } from '../../types';
 
 interface ServiceFormModalProps {
@@ -11,6 +11,7 @@ interface ServiceFormModalProps {
   initialRecord?: EnrichedServiceRecord | null;
   paymentTypes?: PaymentTypeItem[];
   onManagePaymentTypes?: () => void;
+  onMoveToExpense?: (record: EnrichedServiceRecord) => void;
 }
 
 const CATEGORIES: ServiceCategory[] = [
@@ -48,7 +49,8 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   activeVehicleId,
   initialRecord,
   paymentTypes = [],
-  onManagePaymentTypes
+  onManagePaymentTypes,
+  onMoveToExpense
 }) => {
   const availablePaymentTypes = useMemo(() => {
     const rawNames = (paymentTypes && paymentTypes.length > 0)
@@ -185,7 +187,19 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
           
           {/* Vehicle Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Target Vehicle *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-300">Target Vehicle *</label>
+              {initialRecord && onMoveToExpense && (
+                <button
+                  type="button"
+                  onClick={() => onMoveToExpense(initialRecord)}
+                  className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-0.5"
+                  title="Remove this log from the vehicle and keep it only as a general expense"
+                >
+                  <Link2Off className="w-3 h-3" /> Not a car expense? Move to Expense
+                </button>
+              )}
+            </div>
             <select
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
