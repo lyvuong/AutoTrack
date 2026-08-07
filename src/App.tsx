@@ -732,11 +732,24 @@ export const App: React.FC = () => {
   // logged item turns out not to be a car expense at all. Only the
   // ServiceRecord is removed; the Transaction document is left alone so it
   // still shows up wherever the generic transactions collection is consumed.
+  // Its category is reset to the "Expense - Other" namespace (rather than
+  // left as "Car - ...") so the shared Expense app recognizes it as its own
+  // editable row instead of a foreign, read-only Car entry.
   const handleMoveRecordToExpense = (record: EnrichedServiceRecord) => {
     if (!confirm('Move this log out of the vehicle history and keep it only as a general expense? It will no longer appear on this vehicle.')) return;
     setRecords(prev => prev.filter(r => r.id !== record.id));
     setIsServiceModalOpen(false);
     setEditingRecord(null);
+
+    const transaction = transactions.find(t => t.id === record.id);
+    if (transaction && transaction.category !== 'Expense - Other') {
+      const updatedTransaction: Transaction = { ...transaction, category: 'Expense - Other' };
+      setTransactions(prev => prev.map(t => (t.id === record.id ? updatedTransaction : t)));
+      if (user && isFirebaseActive) {
+        saveFirestoreTransaction(user.uid, updatedTransaction, familyCode);
+      }
+    }
+
     if (user && isFirebaseActive) {
       deleteFirestoreRecord(user.uid, record.id, familyCode);
       deleteRTDBRecord(user.uid, record.id, familyCode);
