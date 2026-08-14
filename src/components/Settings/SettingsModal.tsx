@@ -34,6 +34,9 @@ import {
   logoutFirebase 
 } from '../../services/firebase';
 
+import type { Theme } from '../../utils/theme';
+import { Sun, Moon, Palette } from 'lucide-react';
+
 interface SettingsModalProps {
   user: UserProfile | null;
   isFirebaseActive: boolean;
@@ -44,6 +47,8 @@ interface SettingsModalProps {
   onRestoreSampleData: () => void;
   paymentTypesCount?: number;
   onManagePaymentTypes?: () => void;
+  theme?: Theme;
+  onSelectTheme?: (theme: Theme) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -55,7 +60,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearDemoData,
   onRestoreSampleData,
   paymentTypesCount = 0,
-  onManagePaymentTypes
+  onManagePaymentTypes,
+  theme = 'dark',
+  onSelectTheme
 }) => {
   const [inputFamilyCode, setInputFamilyCode] = useState(familyCode || '');
   const [familyStatusMsg, setFamilyStatusMsg] = useState('');
@@ -141,8 +148,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <h1 className="text-2xl font-black text-white font-display">App Settings & Account Profile</h1>
         </div>
         <p className="text-xs text-slate-400">
-          Manage your login session, household garage code, data backups, and custom cloud setup.
+          Manage your login session, appearance theme, household garage code, data backups, and custom cloud setup.
         </p>
+      </div>
+
+      {/* Appearance & Theme Section */}
+      <div className="glass-panel p-6 rounded-3xl space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Palette className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-bold text-white">Appearance & Theme</h2>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 capitalize">
+            Current: {theme} Mode
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Select your visual interface preference. Your choice is automatically remembered on this device.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => onSelectTheme && onSelectTheme('dark')}
+            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-900 border-cyan-500 shadow-md shadow-cyan-500/10 ring-1 ring-cyan-500'
+                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-400'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400">
+                <Moon className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-bold text-white text-sm block">Dark Theme</span>
+                <span className="text-xs text-slate-400">Sleek, deep slate & glassmorphic contrast</span>
+              </div>
+            </div>
+            {theme === 'dark' && (
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectTheme && onSelectTheme('light')}
+            className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+              theme === 'light'
+                ? 'bg-slate-900 border-amber-400 shadow-md shadow-amber-400/10 ring-1 ring-amber-400'
+                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-400'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-amber-400">
+                <Sun className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-bold text-white text-sm block">Light Theme</span>
+                <span className="text-xs text-slate-400">Clean, daytime crisp high-readability palette</span>
+              </div>
+            </div>
+            {theme === 'light' && (
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 1. Google Authentication Section */}

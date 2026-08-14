@@ -31,7 +31,7 @@ export const PWAInstallPrompt: React.FC = () => {
   if (!showInstallBanner) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-bounce-short">
+    <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-bounce-short">
       <div className="glass-panel p-4 rounded-2xl border border-cyan-500/50 shadow-2xl bg-slate-900/95 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <img 

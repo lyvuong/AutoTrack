@@ -18,6 +18,7 @@ import { PWAInstallPrompt } from './components/PWA/PWAInstallPrompt';
 import { LoginScreen } from './components/Auth/LoginScreen';
 
 import type { Vehicle, ServiceRecord, ServiceReminder, Transaction, EnrichedServiceRecord, RefuelRecord, EnrichedRefuelRecord, UserProfile, ActiveTab, PaymentTypeItem } from './types';
+import { getStoredTheme, applyTheme, type Theme } from './utils/theme';
 import { buildTransactionCategory, buildFuelTransactionCategory } from './utils/transactions';
 import {
   loadLocalVehicles,
@@ -93,10 +94,22 @@ export const App: React.FC = () => {
   const [familyCode, setFamilyCodeState] = useState<string>(() => getStoredFamilyCode());
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isFirebaseActive, setIsFirebaseActive] = useState<boolean>(false);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile | null>(null);
+
+  // Apply theme on mount and when changed
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
+    setThemeState(nextTheme);
+    applyTheme(nextTheme);
+  };
 
   const handleSetFamilyCode = async (code: string): Promise<{ success: boolean; message: string }> => {
     const cleanCode = code.toUpperCase().trim();
@@ -967,7 +980,7 @@ export const App: React.FC = () => {
   const unreadRemindersCount = reminders.filter(rem => !rem.isCompleted).length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-24 lg:pb-0">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 lg:pb-2">
       
       {/* Top Banner Navigation Header */}
       <Navbar
@@ -991,21 +1004,36 @@ export const App: React.FC = () => {
         isFirebaseActive={isFirebaseActive}
         user={user}
         familyCode={familyCode}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+      />
+
+      {/* Tab Navigation (Anchors to bottom on narrow screens via CSS, sits under header on large screens) */}
+      <TabNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        unreadRemindersCount={unreadRemindersCount}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
         
         {/* Tab View Switcher */}
         {activeTab === 'dashboard' && (
           <DashboardOverview
             activeVehicle={activeVehicle}
+            vehicles={vehicles}
+            onSelectVehicle={handleSelectVehicle}
             records={enrichedRecords}
             refuelRecords={enrichedRefuelRecords}
             reminders={reminders}
             onOpenAddService={() => {
               setEditingRecord(null);
               setIsServiceModalOpen(true);
+            }}
+            onOpenAddRefuel={() => {
+              setEditingRefuelRecord(null);
+              setIsRefuelModalOpen(true);
             }}
             onOpenAddVehicle={() => {
               setIsVehicleModalOpen(true);
@@ -1014,7 +1042,7 @@ export const App: React.FC = () => {
               setEditingReminder(null);
               setIsReminderModalOpen(true);
             }}
-            onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles') => setActiveTab(tab)}
+            onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles' | 'refuels') => setActiveTab(tab)}
           />
         )}
 
@@ -1097,6 +1125,11 @@ export const App: React.FC = () => {
             onRestoreSampleData={handleRestoreSampleData}
             paymentTypesCount={paymentTypes.length}
             onManagePaymentTypes={() => setIsPaymentTypesModalOpen(true)}
+            theme={theme}
+            onSelectTheme={(t) => {
+              setThemeState(t);
+              applyTheme(t);
+            }}
           />
         )}
 
@@ -1151,13 +1184,6 @@ export const App: React.FC = () => {
         isOpen={isPaymentTypesModalOpen}
         onClose={() => setIsPaymentTypesModalOpen(false)}
         paymentTypes={paymentTypes}
-      />
-
-      {/* Navigation Bar */}
-      <TabNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        unreadRemindersCount={unreadRemindersCount}
       />
 
       {/* PWA Home Screen Install Banner */}

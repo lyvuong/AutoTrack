@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Car, Fuel, History, Bell, BarChart3, Settings, Info } from 'lucide-react';
+import { LayoutDashboard, Car, Fuel, History, Bell, BarChart3 } from 'lucide-react';
 import type { ActiveTab } from '../../types';
 
 interface TabNavigationProps {
@@ -24,25 +24,24 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
 
   const badgeCount = unreadRemindersCount ?? pendingRemindersCount ?? 0;
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'vehicles', label: 'Garage', icon: Car },
-    { id: 'refuels', label: 'Refuels', icon: Fuel },
-    { id: 'history', label: 'Service History', icon: History },
+    { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dash', icon: LayoutDashboard },
+    { id: 'vehicles', label: 'Garage', shortLabel: 'Garage', icon: Car },
+    { id: 'refuels', label: 'Refuels', shortLabel: 'Fuel', icon: Fuel },
+    { id: 'history', label: 'Service History', shortLabel: 'History', icon: History },
     { 
       id: 'reminders', 
       label: 'Reminders', 
+      shortLabel: 'Alerts',
       icon: Bell, 
       badge: badgeCount > 0 ? badgeCount : undefined 
     },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'about', label: 'About', icon: Info },
+    { id: 'analytics', label: 'Analytics', shortLabel: 'Stats', icon: BarChart3 },
   ];
 
   return (
-    <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex space-x-1 sm:space-x-4 overflow-x-auto py-2 scrollbar-none">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 shadow-2xl pb-[env(safe-area-inset-bottom)] lg:static lg:bg-slate-900/80 lg:border-t-0 lg:border-b lg:shadow-none lg:pb-0">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-1 overflow-x-auto py-1.5 sm:py-2 scrollbar-none">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -51,16 +50,17 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => handleTabSelect(tab.id as ActiveTab)}
-                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap relative ${
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shrink-0 sm:shrink lg:shrink-0 relative ${
                   isActive
-                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-inner'
+                    ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-inner font-bold'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                 {tab.badge !== undefined && (
-                  <span className="ml-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-cyan-500 text-slate-950">
+                  <span className="sm:ml-1 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-extrabold rounded-full bg-cyan-500 text-slate-950">
                     {tab.badge}
                   </span>
                 )}

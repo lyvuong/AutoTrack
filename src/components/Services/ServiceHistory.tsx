@@ -107,51 +107,51 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       
       {/* Top Banner & Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-4 sm:p-5 rounded-2xl">
+        <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-xl border border-cyan-500/20">
-              <History className="w-5 h-5" />
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg border border-cyan-500/20">
+              <History className="w-4 h-4" />
             </div>
-            <h1 className="text-2xl font-black text-white font-display">Vehicle Logs & Expense History</h1>
+            <h1 className="text-xl font-black text-white font-display">Vehicle Logs & Expense History</h1>
           </div>
-          <p className="text-xs text-slate-400">
-            Comprehensive timeline for repairs, scheduled maintenance, taxes, registrations, and vehicle expenses.
+          <p className="text-[11px] text-slate-400">
+            Comprehensive timeline for repairs, maintenance, taxes, and expenses.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 no-print">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-700 transition-all"
+            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-700 transition-all"
           >
-            <Download className="w-4 h-4 text-cyan-400" />
-            Export CSV
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            CSV
           </button>
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-700 transition-all"
+            className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-700 transition-all"
           >
-            <Printer className="w-4 h-4 text-slate-400" />
-            Print Report
+            <Printer className="w-3.5 h-3.5 text-slate-400" />
+            Print
           </button>
 
           <button
             onClick={onOpenAddService}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
+            className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4" />
-            Log Service / Expense
+            Log Expense
           </button>
         </div>
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="glass-panel p-4 rounded-2xl space-y-3 no-print">
+      <div className="glass-panel p-3.5 sm:p-4 rounded-2xl space-y-2.5 no-print">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           
           {/* Search Field */}
