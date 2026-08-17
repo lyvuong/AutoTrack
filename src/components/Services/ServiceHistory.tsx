@@ -107,7 +107,7 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       
       {/* Top Banner & Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-4 sm:p-5 rounded-2xl">

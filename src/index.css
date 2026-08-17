@@ -6,23 +6,88 @@
     color: #f1f5f9;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     transition: background-color 0.2s ease, color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #334155;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+@media (max-width: 640px) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+/* Safe area / bottom nav token */
+:root {
+  --bottom-nav-h: 62px;
+}
+
+/* Mobile touch improvements */
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active press feedback utility */
+.tap-scale:active {
+  transform: scale(0.95);
+  transition: transform 0.08s ease;
+}
+
+/* Card hover-lift */
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+}
+.card-hover:active {
+  transform: scale(0.98);
+}
+
+/* Page tab fade-in */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeInUp {
+  animation: fadeInUp 0.20s ease-out both;
+}
+
+/* Badge urgent pulse */
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+.badge-urgent {
+  animation: badge-pulse 1.6s ease-in-out infinite;
+}
+
+/* Bottom fixed nav bar glass */
+.bottom-nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(9, 13, 22, 0.97);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.45);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Glassmorphism utilities */
@@ -187,6 +252,12 @@ html.light header {
 html.light footer {
   background-color: #f8fafc !important;
   border-top-color: #e2e8f0 !important;
+}
+
+html.light .bottom-nav-bar {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-top-color: #e2e8f0 !important;
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.06);
 }
 
 /* Print Styles */

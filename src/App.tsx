@@ -980,7 +980,7 @@ export const App: React.FC = () => {
   const unreadRemindersCount = reminders.filter(rem => !rem.isCompleted).length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 lg:pb-2">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-[70px] lg:pb-0">
       
       {/* Top Banner Navigation Header */}
       <Navbar
@@ -1016,10 +1016,11 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 space-y-3 sm:space-y-4">
         
-        {/* Tab View Switcher */}
+        {/* Tab View Switcher - each tab gets a fade-in animation */}
         {activeTab === 'dashboard' && (
+          <div className="animate-fadeInUp">
           <DashboardOverview
             activeVehicle={activeVehicle}
             vehicles={vehicles}
@@ -1044,9 +1045,11 @@ export const App: React.FC = () => {
             }}
             onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles' | 'refuels') => setActiveTab(tab)}
           />
+          </div>
         )}
 
         {activeTab === 'vehicles' && (
+          <div className="animate-fadeInUp">
           <VehicleGarage
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
@@ -1056,9 +1059,11 @@ export const App: React.FC = () => {
             onDeleteVehicle={handleDeleteVehicle}
             onOpenSettings={() => setActiveTab('settings')}
           />
+          </div>
         )}
 
         {activeTab === 'refuels' && (
+          <div className="animate-fadeInUp">
           <RefuelHistory
             records={enrichedRefuelRecords}
             vehicles={vehicles}
@@ -1074,9 +1079,11 @@ export const App: React.FC = () => {
             }}
             onDeleteRecord={handleDeleteRefuelRecord}
           />
+          </div>
         )}
 
         {activeTab === 'history' && (
+          <div className="animate-fadeInUp">
           <ServiceHistory
             records={enrichedRecords}
             vehicles={vehicles}
@@ -1091,9 +1098,11 @@ export const App: React.FC = () => {
             }}
             onDeleteRecord={handleDeleteRecord}
           />
+          </div>
         )}
 
         {activeTab === 'reminders' && (
+          <div className="animate-fadeInUp">
           <ReminderManager
             reminders={reminders}
             vehicles={vehicles}
@@ -1103,18 +1112,22 @@ export const App: React.FC = () => {
             onToggleComplete={handleToggleCompleteReminder}
             onCompleteAndLogService={handleCompleteAndLogService}
           />
+          </div>
         )}
 
         {activeTab === 'analytics' && (
+          <div className="animate-fadeInUp">
           <CostAnalytics
             vehicles={vehicles}
             activeVehicleId={activeVehicleId}
             records={enrichedRecords}
             refuelRecords={enrichedRefuelRecords}
           />
+          </div>
         )}
 
         {activeTab === 'settings' && (
+          <div className="animate-fadeInUp">
           <SettingsModal
             user={user}
             isFirebaseActive={isFirebaseActive}
@@ -1131,12 +1144,15 @@ export const App: React.FC = () => {
               applyTheme(t);
             }}
           />
+          </div>
         )}
 
         {activeTab === 'about' && (
+          <div className="animate-fadeInUp">
           <AboutPage 
             onOpenSettings={() => setActiveTab('settings')}
           />
+          </div>
         )}
 
       </main>
@@ -1189,8 +1205,8 @@ export const App: React.FC = () => {
       {/* PWA Home Screen Install Banner */}
       <PWAInstallPrompt />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500 no-print">
+      {/* Footer — only show on desktop since mobile has fixed bottom nav */}
+      <footer className="hidden lg:block border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500 no-print">
         <p>AutoTrack Progressive Web App • Cloudflare Pages Ready • Offline Capable</p>
       </footer>
 

@@ -36,10 +36,10 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4">
       
       {/* Shared Family Garage Status Banner */}
-      <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+      <div className="bg-slate-900/90 border border-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl flex-shrink-0">
             <Users className="w-5 h-5" />
@@ -79,7 +79,7 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
       </div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-4 sm:p-6 rounded-2xl">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
             <Car className="w-6 h-6 text-cyan-400" />
@@ -100,7 +100,7 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
 
       {/* Vehicle Grid */}
       {vehicles.length === 0 ? (
-        <div className="glass-panel p-12 text-center rounded-3xl border border-slate-800">
+        <div className="glass-panel p-8 sm:p-12 text-center rounded-3xl border border-slate-800">
           <Car className="w-12 h-12 text-slate-600 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-white mb-1">Your garage is empty</h3>
           <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
@@ -114,7 +114,7 @@ export const VehicleGarage: React.FC<VehicleGarageProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {vehicles.map((v) => {
             const isActive = v.id === activeVehicleId;
 

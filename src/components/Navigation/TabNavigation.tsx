@@ -24,24 +24,19 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
 
   const badgeCount = unreadRemindersCount ?? pendingRemindersCount ?? 0;
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dash', icon: LayoutDashboard },
-    { id: 'vehicles', label: 'Garage', shortLabel: 'Garage', icon: Car },
-    { id: 'refuels', label: 'Refuels', shortLabel: 'Fuel', icon: Fuel },
-    { id: 'history', label: 'Service History', shortLabel: 'History', icon: History },
-    { 
-      id: 'reminders', 
-      label: 'Reminders', 
-      shortLabel: 'Alerts',
-      icon: Bell, 
-      badge: badgeCount > 0 ? badgeCount : undefined 
-    },
-    { id: 'analytics', label: 'Analytics', shortLabel: 'Stats', icon: BarChart3 },
+    { id: 'dashboard', label: 'Dash', icon: LayoutDashboard },
+    { id: 'vehicles',  label: 'Garage', icon: Car },
+    { id: 'refuels',   label: 'Fuel',   icon: Fuel },
+    { id: 'history',   label: 'Service', icon: History },
+    { id: 'reminders', label: 'Alerts',  icon: Bell, badge: badgeCount > 0 ? badgeCount : undefined },
+    { id: 'analytics', label: 'Stats',   icon: BarChart3 },
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 shadow-2xl pb-[env(safe-area-inset-bottom)] lg:static lg:bg-slate-900/80 lg:border-t-0 lg:border-b lg:shadow-none lg:pb-0">
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-1 overflow-x-auto py-1.5 sm:py-2 scrollbar-none">
+    /* Mobile: fixed bottom nav. lg+: static horizontal top nav under header */
+    <nav className="bottom-nav-bar lg:static lg:bottom-auto lg:bg-slate-900/85 lg:backdrop-blur-md lg:border-t-0 lg:border-b lg:border-slate-800 lg:shadow-none lg:pb-0">
+      <div className="max-w-7xl mx-auto px-1 sm:px-4 lg:px-8">
+        <div className="flex items-stretch justify-between gap-0.5 sm:gap-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -50,20 +45,36 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => handleTabSelect(tab.id as ActiveTab)}
-                className={`flex flex-col sm:flex-row items-center justify-center gap-1 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shrink-0 sm:shrink lg:shrink-0 relative ${
-                  isActive
-                    ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-inner font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
-                }`}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`
+                  relative flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0
+                  py-2 px-1 sm:py-2.5 sm:px-2 lg:flex-row lg:gap-1.5 lg:py-2.5 lg:px-3
+                  rounded-xl mx-0.5 my-1.5 transition-all duration-200 active:scale-95
+                  text-[10px] sm:text-[11px] lg:text-xs font-semibold
+                  ${isActive
+                    ? 'bg-cyan-500/15 text-cyan-300 shadow-inner'
+                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
+                  }
+                `}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="sm:hidden">{tab.shortLabel}</span>
-                <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
-                {tab.badge !== undefined && (
-                  <span className="sm:ml-1 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-extrabold rounded-full bg-cyan-500 text-slate-950">
-                    {tab.badge}
-                  </span>
+                {/* Active pill indicator dot */}
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-cyan-400 rounded-full lg:hidden" />
                 )}
+
+                <span className="relative">
+                  <Icon className={`w-[18px] h-[18px] sm:w-5 sm:h-5 lg:w-4 lg:h-4 shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+                  {tab.badge !== undefined && (
+                    <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 px-0.5 text-[8px] font-extrabold rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center leading-none badge-urgent">
+                      {tab.badge > 9 ? '9+' : tab.badge}
+                    </span>
+                  )}
+                </span>
+
+                <span className={`leading-none tracking-tight truncate ${isActive ? 'font-bold' : ''}`}>
+                  {tab.label}
+                </span>
               </button>
             );
           })}

@@ -171,7 +171,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     <div className="space-y-3">
       
       {/* Top Compact Command Bar: Vehicle Switcher, Meta & Fast Actions */}
-      <div className="relative overflow-hidden rounded-xl bg-slate-900/90 border border-slate-800 p-3 shadow-md space-y-2.5">
+      <div className="relative overflow-hidden rounded-2xl bg-slate-900/90 border border-slate-800 p-3 shadow-md space-y-2.5">
         
         {/* Full-Width Active Vehicle Selector Row */}
         {vehicles.length > 0 && onSelectVehicle && (
@@ -337,13 +337,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       )}
 
-      {/* High-Density 6-Column KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+      {/* High-Density KPI Grid — 3 cols on mobile, 6 on desktop */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
         
         {/* Total Cost Spent */}
         <div
           onClick={() => onSelectTab('analytics')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-cyan-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Total Spent</span>
@@ -361,7 +361,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Cost Per Mile */}
         <div
           onClick={() => onSelectTab('analytics')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Cost / Mile</span>
@@ -379,7 +379,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Total Service Logs */}
         <div
           onClick={() => onSelectTab('history')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Services</span>
@@ -397,7 +397,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Recent MPG */}
         <div
           onClick={() => onSelectTab('refuels')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Recent MPG</span>
@@ -416,7 +416,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Avg MPG */}
         <div
           onClick={() => onSelectTab('refuels')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-cyan-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Avg MPG</span>
@@ -435,7 +435,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Active Reminders */}
         <div
           onClick={() => onSelectTab('reminders')}
-          className="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group"
+          className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-amber-500/40 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col justify-between group card-hover"
         >
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-wider">Alerts</span>
@@ -591,7 +591,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 {combinedRecentActivities.map((item) => (
                   <div
                     key={item.id}
-                    className="py-1.5 sm:py-2 flex items-center justify-between gap-2 hover:bg-slate-800/30 px-1.5 rounded-lg transition-colors"
+                    className="py-2 sm:py-2.5 flex items-center justify-between gap-2 hover:bg-slate-800/30 px-2 rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
