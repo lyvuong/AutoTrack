@@ -50,6 +50,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
 
+  const selectedVehicle = vehicles.find(v => v.id === vehicleId);
+  const hasActiveVehicles = vehicles.some(v => !v.isArchived);
+
   useEffect(() => {
     if (initialReminder) {
       setVehicleId(initialReminder.vehicleId);
@@ -59,7 +62,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setDueDate(initialReminder.dueDate || '');
       setNotes(initialReminder.notes || '');
     } else {
-      setVehicleId(activeVehicleId || (vehicles[0]?.id || ''));
+      const activeVehs = vehicles.filter(v => !v.isArchived);
+      const currentActive = vehicles.find(v => v.id === activeVehicleId);
+      const v = (!currentActive?.isArchived ? currentActive : null) || activeVehs[0] || vehicles[0];
+
+      setVehicleId(v?.id || '');
       setTitle('Oil Change & Filter');
       setCategory('Oil Change');
       setDueMileage('');
@@ -73,6 +80,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !vehicleId) return;
+
+    if (!initialReminder && selectedVehicle?.isArchived) {
+      alert('Cannot set a new reminder for an archived vehicle.');
+      return;
+    }
 
     onSave({
       id: initialReminder ? initialReminder.id : `rem-${Date.now()}`,
@@ -112,18 +124,38 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
+          {/* Notice if all vehicles archived */}
+          {!hasActiveVehicles && !initialReminder && (
+            <div className="bg-amber-950/40 border border-amber-500/40 p-3 rounded-2xl text-xs text-amber-200 flex items-start gap-2.5">
+              <span className="font-bold text-amber-400">⚠️ Notice:</span>
+              <span>All vehicles in your garage are currently archived. Unarchive or add an active vehicle to create reminders.</span>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Target Vehicle *</label>
             <select
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
-              className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900 font-semibold"
+              disabled={!hasActiveVehicles && !initialReminder}
+              className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {vehicles.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi)
-                </option>
-              ))}
+              {vehicles.map(v => {
+                const isTargetArchived = Boolean(v.isArchived);
+                const isCurrentReminderVehicle = initialReminder && initialReminder.vehicleId === v.id;
+                const isDisabled = isTargetArchived && !isCurrentReminderVehicle;
+
+                return (
+                  <option 
+                    key={v.id} 
+                    value={v.id}
+                    disabled={isDisabled}
+                    className={isTargetArchived ? 'text-slate-500 bg-slate-950' : 'text-white bg-slate-900'}
+                  >
+                    {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi){isTargetArchived ? ' [Archived]' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

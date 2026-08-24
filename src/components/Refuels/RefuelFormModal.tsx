@@ -48,6 +48,7 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
   const [error, setError] = useState<string>('');
 
   const selectedVehicle = vehicles.find(v => v.id === vehicleId) || vehicles[0];
+  const hasActiveVehicles = useMemo(() => vehicles.some(v => !v.isArchived), [vehicles]);
 
   useEffect(() => {
     if (initialRecord) {
@@ -63,7 +64,10 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
       setPaymentType(initialRecord.paymentType);
       setNotes(initialRecord.notes || '');
     } else {
-      const v = vehicles.find(veh => veh.id === activeVehicleId) || vehicles[0];
+      const activeVehs = vehicles.filter(v => !v.isArchived);
+      const currentActive = vehicles.find(veh => veh.id === activeVehicleId);
+      const v = (!currentActive?.isArchived ? currentActive : null) || activeVehs[0] || vehicles[0];
+
       setVehicleId(v ? v.id : '');
       setOdometer(v ? v.currentMileage.toString() : '');
       setIsFullTank(true);
@@ -120,6 +124,10 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
       setError('Please select a vehicle.');
       return;
     }
+    if (!initialRecord && selectedVehicle?.isArchived) {
+      setError('Cannot log a refuel against an archived vehicle.');
+      return;
+    }
     if (isNaN(odoNum) || odoNum < 0) {
       setError('Please enter a valid current odometer reading.');
       return;
@@ -138,13 +146,13 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
     }
 
     const recordData: Partial<EnrichedRefuelRecord> = {
-      id: initialRecord ? initialRecord.id : undefined,
+      id: initialRecord ? initialRecord.id : `refuel-${Date.now()}`,
       vehicleId,
+      date,
+      time,
       odometer: odoNum,
       isFullTank,
       gallons: galNum,
-      date,
-      time,
       amountPaid: amtNum,
       vendor: vendor.trim(),
       notes: notes.trim() || undefined,
@@ -157,33 +165,40 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-8">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl my-8">
+        
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
+          <div className="flex items-center space-x-2">
+            <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
               <Fuel className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                {initialRecord ? 'Edit Refuel Log' : 'Add Refuel Log'}
-              </h2>
-              <p className="text-xs text-slate-400">Record vehicle fuel & financial transaction</p>
-            </div>
+            <h2 className="text-lg font-bold text-white">
+              {initialRecord ? 'Edit Refuel Log' : 'Log Refueling & Gas Expense'}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+          
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs">
               {error}
+            </div>
+          )}
+
+          {/* Notice if all vehicles archived */}
+          {!hasActiveVehicles && !initialRecord && (
+            <div className="bg-amber-950/40 border border-amber-500/40 p-3 rounded-2xl text-xs text-amber-200 flex items-start gap-2.5">
+              <span className="font-bold text-amber-400">⚠️ Notice:</span>
+              <span>All vehicles in your garage are currently archived. Unarchive or add an active vehicle to log fuel.</span>
             </div>
           )}
 
@@ -193,13 +208,25 @@ export const RefuelFormModal: React.FC<RefuelFormModalProps> = ({
             <select
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+              disabled={!hasActiveVehicles && !initialRecord}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi)
-                </option>
-              ))}
+              {vehicles.map((v) => {
+                const isTargetArchived = Boolean(v.isArchived);
+                const isCurrentRecordVehicle = initialRecord && initialRecord.vehicleId === v.id;
+                const isDisabled = isTargetArchived && !isCurrentRecordVehicle;
+
+                return (
+                  <option 
+                    key={v.id} 
+                    value={v.id}
+                    disabled={isDisabled}
+                    className={isTargetArchived ? 'text-slate-500 bg-slate-950' : 'text-white bg-slate-900'}
+                  >
+                    {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi){isTargetArchived ? ' [Archived]' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

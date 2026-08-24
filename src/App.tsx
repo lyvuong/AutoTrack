@@ -640,6 +640,62 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleArchiveVehicle = (id: string, reason?: string) => {
+    const vehicle = vehicles.find(v => v.id === id);
+    if (!vehicle) return;
+
+    const timestamp = new Date().toISOString();
+    const auditInfo = user ? {
+      uid: user.uid,
+      displayName: user.displayName || 'Car Owner',
+      email: user.email || undefined
+    } : undefined;
+
+    const updatedVehicle: Vehicle = {
+      ...vehicle,
+      isArchived: true,
+      archivedAt: timestamp,
+      archiveReason: reason ? reason.trim() : undefined,
+      updatedAt: timestamp,
+      lastEditedBy: auditInfo
+    };
+
+    setVehicles(prev => prev.map(v => v.id === id ? updatedVehicle : v));
+
+    if (user && isFirebaseActive) {
+      saveFirestoreVehicle(user.uid, updatedVehicle, familyCode);
+      saveRTDBVehicle(user.uid, updatedVehicle, familyCode);
+    }
+  };
+
+  const handleUnarchiveVehicle = (id: string) => {
+    const vehicle = vehicles.find(v => v.id === id);
+    if (!vehicle) return;
+
+    const timestamp = new Date().toISOString();
+    const auditInfo = user ? {
+      uid: user.uid,
+      displayName: user.displayName || 'Car Owner',
+      email: user.email || undefined
+    } : undefined;
+
+    const updatedVehicle: Vehicle = {
+      ...vehicle,
+      isArchived: false,
+      archivedAt: undefined,
+      archiveReason: undefined,
+      updatedAt: timestamp,
+      lastEditedBy: auditInfo
+    };
+
+    setVehicles(prev => prev.map(v => v.id === id ? updatedVehicle : v));
+
+    if (user && isFirebaseActive) {
+      saveFirestoreVehicle(user.uid, updatedVehicle, familyCode);
+      saveRTDBVehicle(user.uid, updatedVehicle, familyCode);
+    }
+  };
+
   // Handlers for Service Records
   const handleSaveRecord = (recordData: Partial<EnrichedServiceRecord>) => {
     if (!activeVehicleId) return;
@@ -651,6 +707,10 @@ export const App: React.FC = () => {
     if (!vehicle) return;
 
     const isEdit = !!editingRecord;
+    if (!isEdit && vehicle.isArchived) {
+      console.warn('Cannot create service record for archived vehicle:', vehicle.id);
+      return;
+    }
     const recordId = editingRecord ? editingRecord.id : `rec-${Date.now()}`;
     const timestamp = new Date().toISOString();
 
@@ -777,6 +837,10 @@ export const App: React.FC = () => {
     if (!vehicle) return;
 
     const isEdit = !!editingRefuelRecord;
+    if (!isEdit && vehicle.isArchived) {
+      console.warn('Cannot create refuel log for archived vehicle:', vehicle.id);
+      return;
+    }
     const recordId = editingRefuelRecord ? editingRefuelRecord.id : `refuel-${Date.now()}`;
     const timestamp = new Date().toISOString();
 
@@ -863,6 +927,11 @@ export const App: React.FC = () => {
   // Handlers for Service Reminders
   const handleSaveReminder = (reminderData: ServiceReminder) => {
     const isEdit = reminders.some(rem => rem.id === reminderData.id);
+    const targetVehicle = vehicles.find(v => v.id === reminderData.vehicleId);
+    if (!isEdit && targetVehicle?.isArchived) {
+      console.warn('Cannot create reminder for archived vehicle:', targetVehicle.id);
+      return;
+    }
     const auditInfo = user ? {
       uid: user.uid,
       displayName: user.displayName || 'Car Owner',
@@ -1044,6 +1113,7 @@ export const App: React.FC = () => {
               setIsReminderModalOpen(true);
             }}
             onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles' | 'refuels') => setActiveTab(tab)}
+            onUnarchiveVehicle={handleUnarchiveVehicle}
           />
           </div>
         )}
@@ -1057,6 +1127,8 @@ export const App: React.FC = () => {
             onSelectVehicle={handleSelectVehicle}
             onSaveVehicle={handleSaveVehicle}
             onDeleteVehicle={handleDeleteVehicle}
+            onArchiveVehicle={handleArchiveVehicle}
+            onUnarchiveVehicle={handleUnarchiveVehicle}
             onOpenSettings={() => setActiveTab('settings')}
           />
           </div>

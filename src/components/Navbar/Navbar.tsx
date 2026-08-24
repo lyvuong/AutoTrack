@@ -93,9 +93,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Log Service */}
             <button
               onClick={onOpenAddService}
-              disabled={vehicles.length === 0}
-              className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs px-2 py-1.5 sm:px-3 rounded-xl shadow-md shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Log Service"
+              disabled={vehicles.length === 0 || vehicles.every(v => v.isArchived)}
+              className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs px-2 py-1.5 sm:px-3 rounded-xl shadow-md shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              title={vehicles.every(v => v.isArchived) ? 'All vehicles are archived' : 'Log Service'}
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Log Service</span>
@@ -105,9 +105,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenAddRefuel && (
               <button
                 onClick={onOpenAddRefuel}
-                disabled={vehicles.length === 0}
-                className="flex items-center gap-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs px-2 py-1.5 sm:px-3 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Log Fuel"
+                disabled={vehicles.length === 0 || vehicles.every(v => v.isArchived)}
+                className="flex items-center gap-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs px-2 py-1.5 sm:px-3 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                title={vehicles.every(v => v.isArchived) ? 'All vehicles are archived' : 'Log Fuel'}
               >
                 <Fuel className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">Log Fuel</span>

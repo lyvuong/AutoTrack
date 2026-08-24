@@ -92,7 +92,9 @@ export const RefuelHistory: React.FC<RefuelHistoryProps> = ({
           </button>
           <button
             onClick={onOpenAddService}
-            className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2"
+            disabled={vehicles.length === 0 || vehicles.every(v => v.isArchived)}
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={vehicles.every(v => v.isArchived) ? 'All vehicles are archived' : 'Log Refuel'}
           >
             <Plus className="w-4 h-4" />
             <span>Log Refuel</span>
@@ -123,7 +125,7 @@ export const RefuelHistory: React.FC<RefuelHistoryProps> = ({
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              {v.year} {v.make} {v.model}
+              {v.year} {v.make} {v.model}{v.isArchived ? ' (Archived)' : ''}
             </button>
           ))}
         </div>

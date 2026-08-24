@@ -60,7 +60,9 @@ export const ReminderManager: React.FC<ReminderManagerProps> = ({
             setEditingReminder(null);
             setIsModalOpen(true);
           }}
-          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all self-start sm:self-auto"
+          disabled={vehicles.length === 0 || vehicles.every(v => v.isArchived)}
+          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 active:scale-95 transition-all self-start sm:self-auto disabled:opacity-40 disabled:cursor-not-allowed"
+          title={vehicles.every(v => v.isArchived) ? 'All vehicles are archived' : 'Set Reminder'}
         >
           <Plus className="w-4 h-4" />
           Set Reminder
@@ -83,6 +85,7 @@ export const ReminderManager: React.FC<ReminderManagerProps> = ({
             {pendingReminders.map((r) => {
               const vehicle = vehicleMap.get(r.vehicleId);
               const overdue = isReminderOverdue(r);
+              const isVehicleArchived = Boolean(vehicle?.isArchived);
 
               return (
                 <div
@@ -106,6 +109,11 @@ export const ReminderManager: React.FC<ReminderManagerProps> = ({
                           {overdue && (
                             <span className="bg-red-500 text-slate-950 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full">
                               OVERDUE
+                            </span>
+                          )}
+                          {isVehicleArchived && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                              Archived
                             </span>
                           )}
                         </div>
@@ -182,10 +190,12 @@ export const ReminderManager: React.FC<ReminderManagerProps> = ({
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                     <button
                       onClick={() => onCompleteAndLogService(r)}
-                      className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs py-2 px-3 rounded-xl shadow transition-all flex items-center justify-center gap-1.5"
+                      disabled={isVehicleArchived}
+                      className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs py-2 px-3 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={isVehicleArchived ? 'Vehicle is archived (cannot log service)' : 'Complete & Log Service'}
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Complete & Log Service
+                      {isVehicleArchived ? 'Vehicle Archived (Read-Only)' : 'Complete & Log Service'}
                     </button>
                   </div>
 

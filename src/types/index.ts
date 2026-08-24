@@ -30,6 +30,9 @@ export interface Vehicle {
   updatedAt: string;
   createdBy?: UserAuditInfo;
   lastEditedBy?: UserAuditInfo;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archiveReason?: string;
 }
 
 export type ServiceCategory = 

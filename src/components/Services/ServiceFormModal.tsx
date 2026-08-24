@@ -93,11 +93,14 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setNextServiceDate(initialRecord.nextServiceDate || '');
       setAddNextReminder(Boolean(initialRecord.nextServiceMileage || initialRecord.nextServiceDate));
     } else {
-      const active = vehicles.find(v => v.id === activeVehicleId);
-      setVehicleId(activeVehicleId || (vehicles[0]?.id || ''));
+      const activeVehs = vehicles.filter(v => !v.isArchived);
+      const currentActive = vehicles.find(v => v.id === activeVehicleId);
+      const initialActive = (!currentActive?.isArchived ? currentActive : null) || activeVehs[0] || vehicles[0];
+      
+      setVehicleId(initialActive?.id || '');
       setDate(new Date().toISOString().split('T')[0]);
       setTime(new Date().toTimeString().slice(0, 5));
-      setMileage(active?.currentMileage || '');
+      setMileage(initialActive?.currentMileage || '');
       setCost('');
       setCategory('Oil Change');
       setType('Maintenance');
@@ -110,6 +113,9 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
       setAddNextReminder(false);
     }
   }, [initialRecord, isOpen, activeVehicleId, vehicles]);
+
+  const selectedVehicle = useMemo(() => vehicles.find(v => v.id === vehicleId), [vehicles, vehicleId]);
+  const hasActiveVehicles = useMemo(() => vehicles.some(v => !v.isArchived), [vehicles]);
 
   if (!isOpen) return null;
 
@@ -132,6 +138,11 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicleId || mileage === '' || cost === '') return;
+
+    if (!initialRecord && selectedVehicle?.isArchived) {
+      alert('Cannot add a new service log to an archived vehicle.');
+      return;
+    }
 
     const recordData: Partial<EnrichedServiceRecord> = {
       id: initialRecord ? initialRecord.id : `rec-${Date.now()}`,
@@ -184,7 +195,15 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          
+
+          {/* All Vehicles Archived Alert for New Records */}
+          {!hasActiveVehicles && !initialRecord && (
+            <div className="bg-amber-950/40 border border-amber-500/40 p-3 rounded-2xl text-xs text-amber-200 flex items-start gap-2.5">
+              <span className="font-bold text-amber-400">⚠️ Notice:</span>
+              <span>All vehicles in your garage are currently archived. Please unarchive a vehicle or add a new active vehicle to log new service entries.</span>
+            </div>
+          )}
+
           {/* Vehicle Selector */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -204,13 +223,25 @@ export const ServiceFormModal: React.FC<ServiceFormModalProps> = ({
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
               required
-              className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900 font-semibold"
+              disabled={!hasActiveVehicles && !initialRecord}
+              className="w-full glass-input text-white text-sm rounded-xl p-2.5 bg-slate-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi)
-                </option>
-              ))}
+              {vehicles.map((v) => {
+                const isTargetArchived = Boolean(v.isArchived);
+                const isCurrentRecordVehicle = initialRecord && initialRecord.vehicleId === v.id;
+                const isDisabled = isTargetArchived && !isCurrentRecordVehicle;
+
+                return (
+                  <option 
+                    key={v.id} 
+                    value={v.id}
+                    disabled={isDisabled}
+                    className={isTargetArchived ? 'text-slate-500 bg-slate-950' : 'text-white bg-slate-900'}
+                  >
+                    {v.year} {v.make} {v.model} ({v.currentMileage.toLocaleString()} mi){isTargetArchived ? ' [Archived]' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

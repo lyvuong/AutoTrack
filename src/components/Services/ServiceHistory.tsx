@@ -142,7 +142,9 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
 
           <button
             onClick={onOpenAddService}
-            className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
+            disabled={vehicles.length === 0 || vehicles.every(v => v.isArchived)}
+            className="flex items-center gap-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-md shadow-cyan-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            title={vehicles.every(v => v.isArchived) ? 'All vehicles are archived' : 'Log Expense'}
           >
             <Plus className="w-4 h-4" />
             Log Expense
@@ -175,7 +177,7 @@ export const ServiceHistory: React.FC<ServiceHistoryProps> = ({
             <option value="all">🚘 All Vehicles ({vehicles.length})</option>
             {vehicles.map(v => (
               <option key={v.id} value={v.id}>
-                {v.year} {v.make} {v.model}
+                {v.year} {v.make} {v.model}{v.isArchived ? ' (Archived)' : ''}
               </option>
             ))}
           </select>
