@@ -38,6 +38,8 @@ interface DashboardOverviewProps {
   onSelectTab: (tab: 'history' | 'reminders' | 'analytics' | 'vehicles' | 'refuels') => void;
   onUpdateMileage?: (vehicleId: string, newMileage: number) => void;
   onUnarchiveVehicle?: (vehicleId: string) => void;
+  onEditService?: (record: EnrichedServiceRecord) => void;
+  onEditRefuel?: (record: EnrichedRefuelRecord) => void;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -53,7 +55,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenAddReminder,
   onSelectTab,
   onUpdateMileage,
-  onUnarchiveVehicle
+  onUnarchiveVehicle,
+  onEditService,
+  onEditRefuel
 }) => {
   const [isEditingMileage, setIsEditingMileage] = useState(false);
   const [mileageInput, setMileageInput] = useState(activeVehicle?.currentMileage?.toString() || '');
@@ -80,6 +84,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const combinedRecentActivities = useMemo(() => {
     const list: Array<{
       id: string;
+      rawRecord: EnrichedServiceRecord | EnrichedRefuelRecord;
       date: string;
       title: string;
       subtitle: string;
@@ -94,6 +99,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       vehicleRecords.forEach(r => {
         list.push({
           id: `service-${r.id}`,
+          rawRecord: r,
           date: r.date,
           title: r.category,
           subtitle: `${r.provider || 'Self / DIY'} • ${r.mileage.toLocaleString()} mi`,
@@ -110,6 +116,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       vehicleRefuelRecords.forEach(r => {
         list.push({
           id: `refuel-${r.id}`,
+          rawRecord: r,
           date: r.date,
           title: r.vendor ? `${r.vendor} Refuel` : 'Fuel Refuel',
           subtitle: `${r.gallons.toFixed(2)} gal @ $${r.pricePerGallon.toFixed(3)} • ${r.odometer.toLocaleString()} mi`,
@@ -653,54 +660,78 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
             ) : (
               <div className="divide-y divide-slate-800/60">
-                {combinedRecentActivities.map((item) => (
-                  <div
-                    key={item.id}
-                    className="py-2 sm:py-2.5 flex items-center justify-between gap-2 hover:bg-slate-800/30 px-2 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-                        item.isRefuel
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                      }`}>
-                        {item.isRefuel ? <Fuel className="w-3.5 h-3.5" /> : <Tag className="w-3.5 h-3.5" />}
-                      </div>
+                {combinedRecentActivities.map((item) => {
+                  const handleEdit = () => {
+                    if (item.isRefuel) {
+                      onEditRefuel?.(item.rawRecord as EnrichedRefuelRecord);
+                    } else {
+                      onEditService?.(item.rawRecord as EnrichedServiceRecord);
+                    }
+                  };
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-xs text-slate-100 truncate">{item.title}</span>
-                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border ${
-                            item.badgeType === 'Repair' ? 'bg-red-950 text-red-400 border-red-800/60' :
-                            item.badgeType === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border-cyan-800/60' :
-                            item.badgeType === 'Upgrade' ? 'bg-purple-950 text-purple-400 border-purple-800/60' :
-                            item.badgeType === 'Fee / Tax' ? 'bg-emerald-950 text-emerald-400 border-emerald-800/60' :
-                            item.badgeType === 'Inspection' ? 'bg-amber-950 text-amber-400 border-amber-800/60' :
-                            item.badgeType === 'Fuel' ? 'bg-emerald-950 text-emerald-400 border-emerald-800/60' :
-                            'bg-slate-800 text-slate-300 border-slate-700'
-                          }`}>
-                            {item.badgeText}
-                          </span>
-                          {item.isTaxDeductible && (
-                            <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-0.5">
-                              <ReceiptText className="w-2.5 h-2.5" /> Tax
-                            </span>
-                          )}
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={handleEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleEdit();
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      title={`Click to edit ${item.isRefuel ? 'refuel' : 'service'} record`}
+                      aria-label={`Edit ${item.title}`}
+                      className="group py-2 sm:py-2.5 flex items-center justify-between gap-2 hover:bg-slate-800/50 active:bg-slate-800/80 px-2 rounded-lg transition-all cursor-pointer border border-transparent hover:border-slate-700/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+                          item.isRefuel
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 group-hover:border-emerald-500/40'
+                            : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 group-hover:border-cyan-500/40'
+                        }`}>
+                          {item.isRefuel ? <Fuel className="w-3.5 h-3.5" /> : <Tag className="w-3.5 h-3.5" />}
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {item.subtitle}
-                        </p>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-xs text-slate-100 group-hover:text-cyan-300 transition-colors truncate">
+                              {item.title}
+                            </span>
+                            <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border ${
+                              item.badgeType === 'Repair' ? 'bg-red-950 text-red-400 border-red-800/60' :
+                              item.badgeType === 'Maintenance' ? 'bg-cyan-950 text-cyan-400 border-cyan-800/60' :
+                              item.badgeType === 'Upgrade' ? 'bg-purple-950 text-purple-400 border-purple-800/60' :
+                              item.badgeType === 'Fee / Tax' ? 'bg-emerald-950 text-emerald-400 border-emerald-800/60' :
+                              item.badgeType === 'Inspection' ? 'bg-amber-950 text-amber-400 border-amber-800/60' :
+                              item.badgeType === 'Fuel' ? 'bg-emerald-950 text-emerald-400 border-emerald-800/60' :
+                              'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}>
+                              {item.badgeText}
+                            </span>
+                            {item.isTaxDeductible && (
+                              <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-0.5">
+                                <ReceiptText className="w-2.5 h-2.5" /> Tax
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">{item.date}</span>
+                        <span className="text-xs sm:text-sm font-extrabold text-white font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 group-hover:border-slate-700 transition-colors">
+                          ${item.cost.toFixed(2)}
+                        </span>
+                        <Edit3 className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all hidden sm:inline-block" />
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">{item.date}</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-white font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                        ${item.cost.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

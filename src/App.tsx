@@ -1114,6 +1114,14 @@ export const App: React.FC = () => {
             }}
             onSelectTab={(tab: 'history' | 'reminders' | 'analytics' | 'vehicles' | 'refuels') => setActiveTab(tab)}
             onUnarchiveVehicle={handleUnarchiveVehicle}
+            onEditService={(rec: EnrichedServiceRecord) => {
+              setEditingRecord(rec);
+              setIsServiceModalOpen(true);
+            }}
+            onEditRefuel={(rec: EnrichedRefuelRecord) => {
+              setEditingRefuelRecord(rec);
+              setIsRefuelModalOpen(true);
+            }}
           />
           </div>
         )}
